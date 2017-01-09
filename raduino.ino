@@ -263,7 +263,7 @@ void calibrate(){
     // when you change it's state
     if (digitalRead(CAL_BUTTON) == HIGH){
       mode = MODE_NORMAL;
-      printLine1("Calibrated      ");
+      printLine1((char *)"Calibrated      ");
 
       //scale the caliberation variable to 10 MHz
       cal = (cal * 10000000l) / frequency;
@@ -272,13 +272,13 @@ void calibrate(){
       EEPROM.write(1, ((cal >> 8) & 0xFF));
       EEPROM.write(2, ((cal >> 16) & 0xFF));
       EEPROM.write(3, ((cal >> 24) & 0xFF));
-      printLine2("Saved.    ");
+      printLine2((char *)"Saved.    ");
       delay(5000);
     }
     else {
       // while the calibration is in progress (CAL_BUTTON is held down), keep tweaking the
       // frequency as read out by the knob, display the chnage in the second line
-      si5351.set_freq((bfo_freq + cal - frequency) * 100LL,  SI5351_PLL_FIXED, SI5351_CLK2); 
+      si5351.set_freq_manual((bfo_freq + cal - frequency) * 100LL,  SI5351_PLL_FIXED, SI5351_CLK2);
       sprintf(c, "offset:%d ", cal);
       printLine2(c);
     }  
@@ -309,10 +309,10 @@ void setFrequency(unsigned long f){
   uint64_t osc_f;
   
   if (isUSB){
-    si5351.set_freq((bfo_freq + f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
+    si5351.set_freq_manual((bfo_freq + f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
   }
   else{
-    si5351.set_freq((bfo_freq - f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
+    si5351.set_freq_manual((bfo_freq - f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
   }
 
   frequency = f;
@@ -466,7 +466,7 @@ void checkButton(){
   // if the button has been down for more thn TAP_HOLD_MILLIS, we consider it a long press
   // set both VFOs to the same frequency, update the display and be done
   if (duration > TAP_HOLD_MILLIS){
-    printLine2("VFOs reset!");
+    printLine2((char *)"VFOs reset!");
     vfoA= vfoB = frequency;
     delay(300);
     updateDisplay();
@@ -491,7 +491,7 @@ void checkButton(){
       vfoA = frequency;
       frequency = vfoB;
     }
-     //printLine2("VFO swap! ");
+     //printLine2((char *)"VFO swap! ");
      delay(600);
      updateDisplay();
     
@@ -561,8 +561,8 @@ void setup()
   
   lcd.begin(16, 2);
   printBuff[0] = 0;
-  printLine1("Raduino v1.01"); 
-  printLine2("             "); 
+  printLine1((char *)"Raduino v1.01"); 
+  printLine2((char *)"             "); 
     
   // Start serial and initialize the Si5351
   Serial.begin(9600);
@@ -586,7 +586,7 @@ void setup()
   digitalWrite(TX_RX, 0);
   delay(500);
 
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l);
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l,0);
   
   Serial.println("*Initiliazed Si5351\n");
   
@@ -598,7 +598,7 @@ void setup()
   si5351.output_enable(SI5351_CLK1, 0);
   si5351.output_enable(SI5351_CLK2, 1);
   Serial.println("*Output enabled PLL\n");
-  si5351.set_freq(500000000l ,  SI5351_PLL_FIXED, SI5351_CLK2);   
+  si5351.set_freq_manual(500000000l ,  SI5351_PLL_FIXED, SI5351_CLK2);
   
   Serial.println("*Si5350 ON\n");       
   mode = MODE_NORMAL;
@@ -611,8 +611,8 @@ void loop(){
    if (digitalRead(CAL_BUTTON) == LOW && mode == MODE_NORMAL){
     mode = MODE_CALIBRATE;    
     si5351.set_correction(0);
-    printLine1("Calibrating: Set");
-    printLine2("to zerobeat.    ");
+    printLine1((char *)"Calibrating: Set");
+    printLine2((char *)"to zerobeat.    ");
     delay(2000);
     return;
   }
