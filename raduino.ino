@@ -31,6 +31,8 @@
  *  from www.silabs.com although, strictly speaking it is not a requirment to understand this code. 
  *  Instead, you can look up the Si5351 library written by Jason Mildrum, NT7S. You can download and 
  *  install it from https://github.com/etherkit/Si5351Arduino to complile this file.
+ *  NOTE: This sketch is based on version V2 of the Si5351 library. It will not compile with V1!
+ *  
  *  The Wire.h library is used to talk to the Si5351 and we also declare an instance of 
  *  Si5351 object to control the clocks.
  */
@@ -241,7 +243,7 @@ void updateDisplay(){
  * 1. Tune in a signal that is at a known frequency.
  * 2. Now, set the display to show the correct frequency, 
  *    the signal will no longer be tuned up properly
- * 3. Press the CAL_BUTTON line to the ground
+ * 3. Press the CAL_BUTTON line to the ground (pin A2 - red wire)
  * 4. tune in the signal until it sounds proper.
  * 5. Release CAL_BUTTON
  * In step 4, when we say 'sounds proper' then, for a CW signal/carrier it means zero-beat 
@@ -263,24 +265,29 @@ void calibrate(){
     // when you change it's state
     if (digitalRead(CAL_BUTTON) == HIGH){
       mode = MODE_NORMAL;
-      printLine1("Calibrated      ");
+      printLine1((char *)"Calibrated      ");
 
-      //scale the caliberation variable to 10 MHz
-      cal = (cal * 10000000l) / frequency;
-      //Write the 4 bytes into the eeprom memory.
+      //calculate the correction factor in parts-per-billion (offset in relation to the osc frequency)
+      cal = (cal * -1000000000LL) / (bfo_freq - frequency) ;
+      //apply the correction factor     
+      si5351.set_correction(cal);
+      //Write the 4 bytes of the correction factor into the eeprom memory.
       EEPROM.write(0, (cal & 0xFF));
       EEPROM.write(1, ((cal >> 8) & 0xFF));
       EEPROM.write(2, ((cal >> 16) & 0xFF));
       EEPROM.write(3, ((cal >> 24) & 0xFF));
-      printLine2("Saved.    ");
+      printLine2((char *)"Saved.    ");
       delay(5000);
     }
     else {
       // while the calibration is in progress (CAL_BUTTON is held down), keep tweaking the
       // frequency as read out by the knob, display the chnage in the second line
-      si5351.set_freq((bfo_freq + cal - frequency) * 100LL,  SI5351_PLL_FIXED, SI5351_CLK2); 
+      si5351.set_freq((bfo_freq - frequency) * 100LL, SI5351_CLK2); 
       sprintf(c, "offset:%d ", cal);
       printLine2(c);
+      //calculate the correction factor in ppb and apply it
+      cal = (cal * -1000000000LL) / (bfo_freq - frequency) ;
+      si5351.set_correction(cal);
     }  
 }
 
@@ -309,10 +316,10 @@ void setFrequency(unsigned long f){
   uint64_t osc_f;
   
   if (isUSB){
-    si5351.set_freq((bfo_freq + f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
+    si5351.set_freq((bfo_freq + f) * 100ULL, SI5351_CLK2);
   }
   else{
-    si5351.set_freq((bfo_freq - f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
+    si5351.set_freq((bfo_freq - f) * 100ULL, SI5351_CLK2);
   }
 
   frequency = f;
@@ -466,7 +473,7 @@ void checkButton(){
   // if the button has been down for more thn TAP_HOLD_MILLIS, we consider it a long press
   // set both VFOs to the same frequency, update the display and be done
   if (duration > TAP_HOLD_MILLIS){
-    printLine2("VFOs reset!");
+    printLine2((char *)"VFOs reset!");
     vfoA= vfoB = frequency;
     delay(300);
     updateDisplay();
@@ -491,7 +498,7 @@ void checkButton(){
       vfoA = frequency;
       frequency = vfoB;
     }
-     //printLine2("VFO swap! ");
+     //printLine2((char *)"VFO swap! ");
      delay(600);
      updateDisplay();
     
@@ -561,13 +568,13 @@ void setup()
   
   lcd.begin(16, 2);
   printBuff[0] = 0;
-  printLine1("Raduino v1.01"); 
-  printLine2("             "); 
+  printLine1((char *)"Raduino v1.02"); 
+  printLine2((char *)"             "); 
     
   // Start serial and initialize the Si5351
   Serial.begin(9600);
   analogReference(DEFAULT);
-  Serial.println("*Raduino booting up\nv0.01\n");
+  Serial.println("*Raduino booting up\nv1.02\n");
 
   //configure the function button to use the external pull-up
   pinMode(FBUTTON, INPUT);
@@ -586,7 +593,12 @@ void setup()
   digitalWrite(TX_RX, 0);
   delay(500);
 
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l);
+  //fetch the correction factor from EEPROM
+  EEPROM.get(0, cal);
+  Serial.println("fetched correction factor from EEPROM:");
+  Serial.println(cal);
+  //initialize the SI5351 and apply the correction factor
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l,cal);
   
   Serial.println("*Initiliazed Si5351\n");
   
@@ -598,7 +610,7 @@ void setup()
   si5351.output_enable(SI5351_CLK1, 0);
   si5351.output_enable(SI5351_CLK2, 1);
   Serial.println("*Output enabled PLL\n");
-  si5351.set_freq(500000000l ,  SI5351_PLL_FIXED, SI5351_CLK2);   
+  si5351.set_freq(500000000l , SI5351_CLK2);   
   
   Serial.println("*Si5350 ON\n");       
   mode = MODE_NORMAL;
@@ -611,8 +623,8 @@ void loop(){
    if (digitalRead(CAL_BUTTON) == LOW && mode == MODE_NORMAL){
     mode = MODE_CALIBRATE;    
     si5351.set_correction(0);
-    printLine1("Calibrating: Set");
-    printLine2("to zerobeat.    ");
+    printLine1((char *)"Calibrating: Set");
+    printLine2((char *)"to zerobeat.    ");
     delay(2000);
     return;
   }
@@ -628,4 +640,5 @@ void loop(){
   doTuning(); 
   delay(50); 
 }
+
 
