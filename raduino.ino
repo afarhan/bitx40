@@ -177,8 +177,8 @@ unsigned long bfo_freq = 11998000L;
 int  old_knob = 0;
 
 #define CW_OFFSET (800l)
-#define LOWEST_FREQ  (6995000l)
-#define HIGHEST_FREQ (7500000l)
+#define LOWEST_FREQ  (6995000L)
+#define HIGHEST_FREQ (7500000L)
 
 long frequency, stepSize=100000;
 
@@ -267,6 +267,7 @@ void calibrate(){
       mode = MODE_NORMAL;
       printLine1((char *)"Calibrated      ");
 
+      //"calibration fix" by Allard, PE1NWL
       //calculate the correction factor in parts-per-billion (offset in relation to the osc frequency)
       cal = (cal * -1000000000LL) / (bfo_freq - frequency) ;
       //apply the correction factor     
@@ -454,7 +455,7 @@ void checkButton(){
         int count = 0;
         /* track the tuning and return */
         while (btnDown()){
-          frequency = baseTune = ((analogRead(ANALOG_TUNING) * 30000l) + 1000000l);
+          frequency = baseTune = ((analogRead(ANALOG_TUNING) * 30000L) + 1000000L);
           setFrequency(frequency);
           updateDisplay();
           count++;
@@ -531,7 +532,7 @@ void doTuning(){
 
   // the knob is fully on the low end, move down by 10 Khz and wait for 200 msec
  if (knob < 10 && frequency > LOWEST_FREQ) {
-      baseTune = baseTune - 10000l;
+      baseTune = baseTune - 10000L;
       frequency = baseTune;
       updateDisplay();
       setFrequency(frequency);
@@ -539,18 +540,28 @@ void doTuning(){
   } 
   // the knob is full on the high end, move up by 10 Khz and wait for 200 msec
   else if (knob > 1010 && frequency < HIGHEST_FREQ) {
-     baseTune = baseTune + 10000l; 
-     frequency = baseTune + 50000l;
+     baseTune = baseTune + 10000L; 
+     frequency = baseTune + 50000L;
      setFrequency(frequency);
      updateDisplay();
      delay(200);
   }
-  // the tuning knob is at neither extremities, tune the signals as usual
+  // the tuning knob is at neither extremities, tune the signals as usual ("flutter fix" by Jerry, KE7ER)
   else if (knob != old_knob){
-     frequency = baseTune + (50l * knob);
-     old_knob = knob;
-     setFrequency(frequency);
-     updateDisplay();
+     static char dir_knob;
+     if ( (knob>old_knob) && ((dir_knob==1) || ((knob-old_knob) >5)) ||
+        (knob<old_knob) && ((dir_knob==0) || ((old_knob-knob) >5)) )   {
+        if (knob>old_knob) {
+           dir_knob=1;
+           frequency = baseTune + (50L * (knob-5));
+        } else {
+           dir_knob=0;
+           frequency = baseTune + (50L * knob);
+        }
+       old_knob = knob;
+       setFrequency(frequency);
+       updateDisplay();
+    }
   }
 }
 
@@ -568,13 +579,13 @@ void setup()
   
   lcd.begin(16, 2);
   printBuff[0] = 0;
-  printLine1((char *)"Raduino v1.02"); 
+  printLine1((char *)"Raduino v1.03"); 
   printLine2((char *)"             "); 
     
   // Start serial and initialize the Si5351
   Serial.begin(9600);
   analogReference(DEFAULT);
-  Serial.println("*Raduino booting up\nv1.02\n");
+  Serial.println("*Raduino booting up\nv1.03\n");
 
   //configure the function button to use the external pull-up
   pinMode(FBUTTON, INPUT);
@@ -598,7 +609,7 @@ void setup()
   Serial.println("fetched correction factor from EEPROM:");
   Serial.println(cal);
   //initialize the SI5351 and apply the correction factor
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l,cal);
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000L,cal);
   
   Serial.println("*Initiliazed Si5351\n");
   
@@ -610,7 +621,7 @@ void setup()
   si5351.output_enable(SI5351_CLK1, 0);
   si5351.output_enable(SI5351_CLK2, 1);
   Serial.println("*Output enabled PLL\n");
-  si5351.set_freq(500000000l , SI5351_CLK2);   
+  si5351.set_freq(500000000L , SI5351_CLK2);   
   
   Serial.println("*Si5350 ON\n");       
   mode = MODE_NORMAL;
@@ -640,5 +651,3 @@ void loop(){
   doTuning(); 
   delay(50); 
 }
-
-
