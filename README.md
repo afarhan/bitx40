@@ -11,6 +11,12 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.04
+- Sketch now allows the (optional) use of a 10-turn potentiometer for complete band coverage (Allard, PE1NWL)
+- Standard settings are still for a 1-turn pot.
+- But if you want to use a 10-turn pot instead, change the values for 'TUNING_RANGE' and 'baseTune'
+  in lines 189 and 190 to your liking
+  
 v1.03
 - improved tuning "flutter fix" (Jerry, KE7ER)
 
