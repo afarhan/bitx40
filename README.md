@@ -11,6 +11,11 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.05
+- in setup(): increase the VFO drive level to 4mA to kill the birdie at 7199 kHz (Allard, PE1NWL)
+  (4mA seems the optimum value in most cases, but you may try different drive strengths for best results -
+  accepted values are 2,4,6,8 mA)
+
 v1.04
 - Sketch now allows the (optional) use of a 10-turn potentiometer for complete band coverage (Allard, PE1NWL)
 - Standard settings are still for a 1-turn pot.
