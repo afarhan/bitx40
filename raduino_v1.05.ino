@@ -608,13 +608,13 @@ void setup()
   
   lcd.begin(16, 2);
   printBuff[0] = 0;
-  printLine1((char *)"Raduino v1.04"); 
+  printLine1((char *)"Raduino v1.05"); 
   printLine2((char *)"             "); 
     
   // Start serial and initialize the Si5351
   Serial.begin(9600);
   analogReference(DEFAULT);
-  Serial.println("*Raduino booting up\nv1.04\n");
+  Serial.println("*Raduino booting up\nv1.05\n");
 
   //configure the function button to use the external pull-up
   pinMode(FBUTTON, INPUT);
@@ -645,13 +645,16 @@ void setup()
   si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
   si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
   Serial.println("*Fixed PLL\n");  
-  //si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
   si5351.output_enable(SI5351_CLK0, 0);
   si5351.output_enable(SI5351_CLK1, 0);
   si5351.output_enable(SI5351_CLK2, 1);
+  //increase the VFO drive level to 4mA to kill the birdie at 7199 kHz
+  //you may try different drive strengths for best results
+  //accepted values are 2,4,6,8 mA
+  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_4MA);
+  //
   Serial.println("*Output enabled PLL\n");
-  si5351.set_freq(500000000L , SI5351_CLK2);   
-  
+  si5351.set_freq(500000000L , SI5351_CLK2);
   Serial.println("*Si5350 ON\n");       
   mode = MODE_NORMAL;
   delay(10);
