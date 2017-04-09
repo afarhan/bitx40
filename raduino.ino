@@ -86,8 +86,8 @@ unsigned char serial_in_count = 0;
  *      
  * Though, this can be assigned anyway, for this application of the Arduino, we will make the following
  * assignment
- * A2 will connect to the PTT line, which is the usually a part of the mic connector
- * A3 is connected to a push button that can momentarily ground this line. This will be used to switch between different modes, etc.
+ * A2
+ is connected to a push button that can momentarily ground this line. This will be used to switch between different modes, etc.
  * A6 is to implement a keyer, it is reserved and not yet implemented
  * A7 is connected to a center pin of good quality 100K or 10K linear potentiometer with the two other ends connected to
  * ground and +5v lines available on the connector. This implments the tuning mechanism
@@ -255,7 +255,7 @@ void calibrate(){
 
     // The tuning knob gives readings from 0 to 1000
     // Each step is taken as 10 Hz and the mid setting of the knob is taken as zero
-    cal = (analogRead(ANALOG_TUNING) * 10)-5000;
+    cal = (analogRead(ANALOG_TUNING) - 500) * 500ULL;
 
     // if the button is released, we save the setting
     // and delay anything else by 5 seconds to debounce the CAL_BUTTON
@@ -263,23 +263,20 @@ void calibrate(){
     // when you change it's state
     if (digitalRead(CAL_BUTTON) == HIGH){
       mode = MODE_NORMAL;
-      printLine1("Calibrated      ");
-
-      //scale the caliberation variable to 10 MHz
-      cal = (cal * 10000000l) / frequency;
-      //Write the 4 bytes into the eeprom memory.
-      EEPROM.write(0, (cal & 0xFF));
-      EEPROM.write(1, ((cal >> 8) & 0xFF));
-      EEPROM.write(2, ((cal >> 16) & 0xFF));
-      EEPROM.write(3, ((cal >> 24) & 0xFF));
-      printLine2("Saved.    ");
+      EEPROM.put(0,cal);
+      printLine2("Calibrated    ");
       delay(5000);
     }
     else {
       // while the calibration is in progress (CAL_BUTTON is held down), keep tweaking the
       // frequency as read out by the knob, display the chnage in the second line
-      si5351.set_freq((bfo_freq + cal - frequency) * 100LL,  SI5351_PLL_FIXED, SI5351_CLK2); 
-      sprintf(c, "offset:%d ", cal);
+      si5351.set_correction(cal);
+      si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
+      si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
+      
+      setFrequency(frequency);
+      updateDisplay();
+      sprintf(c, "%08ld  ", cal);
       printLine2(c);
     }  
 }
@@ -309,10 +306,10 @@ void setFrequency(unsigned long f){
   uint64_t osc_f;
   
   if (isUSB){
-    si5351.set_freq((bfo_freq + f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
+    si5351.set_freq((bfo_freq + f) * 100ULL,  SI5351_CLK2);
   }
   else{
-    si5351.set_freq((bfo_freq - f) * 100ULL, SI5351_PLL_FIXED, SI5351_CLK2);
+    si5351.set_freq((bfo_freq - f) * 100ULL, SI5351_CLK2);
   }
 
   frequency = f;
@@ -563,7 +560,7 @@ void setup()
   printBuff[0] = 0;
   printLine1("Raduino v1.01"); 
   printLine2("             "); 
-    
+
   // Start serial and initialize the Si5351
   Serial.begin(9600);
   analogReference(DEFAULT);
@@ -585,9 +582,14 @@ void setup()
   digitalWrite(CW_TONE, 0);
   digitalWrite(TX_RX, 0);
   delay(500);
-
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l);
   
+  EEPROM.get(0,cal);
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF,25000000l, cal);
+  sprintf(b, "cal: %ld\n", cal);
+  Serial.println(b);
+  si5351.set_correction(cal);  
+
+
   Serial.println("*Initiliazed Si5351\n");
   
   si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
@@ -598,7 +600,7 @@ void setup()
   si5351.output_enable(SI5351_CLK1, 0);
   si5351.output_enable(SI5351_CLK2, 1);
   Serial.println("*Output enabled PLL\n");
-  si5351.set_freq(500000000l ,  SI5351_PLL_FIXED, SI5351_CLK2);   
+  si5351.set_freq(500000000l,  SI5351_CLK2);   
   
   Serial.println("*Si5350 ON\n");       
   mode = MODE_NORMAL;
@@ -611,9 +613,8 @@ void loop(){
    if (digitalRead(CAL_BUTTON) == LOW && mode == MODE_NORMAL){
     mode = MODE_CALIBRATE;    
     si5351.set_correction(0);
-    printLine1("Calibrating: Set");
-    printLine2("to zerobeat.    ");
-    delay(2000);
+    printLine2("Calibration... ");
+    delay(5000);
     return;
   }
   else if (mode == MODE_CALIBRATE){
@@ -628,4 +629,3 @@ void loop(){
   doTuning(); 
   delay(50); 
 }
-
