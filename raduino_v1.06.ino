@@ -229,6 +229,8 @@ void printLine1(char *c){
 
 void printLine2(char *c){
   lcd.setCursor(0, 1);
+  lcd.print("               ");
+  lcd.setCursor(0, 1);
   lcd.print(c);
 }
 
@@ -241,21 +243,44 @@ void printLine2(char *c){
  */
 
 void updateDisplay(){
-    sprintf(b, "%08ld", frequency);      
-    sprintf(c, "%s:%.2s.%.4s", vfoActive == VFO_A ? "A" : "B" , b,  b+2);
-    if (isUSB)
-      strcat(c, " USB");
-    else
-      strcat(c, " LSB");
-      
-    if (inTx)
-      strcat(c, " TX");
-    else if (ritOn)
-      strcat(c, " +R");
-    else
-      strcat(c, "   ");
+// improved by Jack Purdum, W8TEE
+// replaced fsprint commmands by str commands for code space reduction
+
+  memset(c, 0, sizeof(c));
+  memset(b, 0, sizeof(b));
+  
+  ltoa(frequency, b, DEC);
+
+  if (VFO_A == vfoActive)
+    strcpy(c, "A:");
+  else
+    strcpy(c, "B:");
+
+  if (frequency < 10000000L) {
+    c[2] = '0';
+    c[3] = b[0];
+    strcat(c, ".");
+    strncat(c, &b[1], 4);
+  }
+  else {
+    strncat(c, b, 2);
+    strcat(c, ".");
+    strncat(c, &b[2], 4);
+  } 
+     
+  if (isUSB)
+    strcat(c, " USB");
+  else
+    strcat(c, " LSB");      
+
+  if (inTx)
+    strcat(c, " TX");
+  else if (ritOn)
+    strcat(c, " +R");
+  else
+    strcat(c, "   ");
           
-    printLine1(c);
+  printLine1(c);
 }
 
 /**
@@ -304,8 +329,10 @@ void calibrate(){
     else {
       // while the calibration is in progress (CAL_BUTTON is held down), keep tweaking the
       // frequency as read out by the knob, display the chnage in the second line
-      si5351.set_freq((bfo_freq - frequency) * 100LL, SI5351_CLK2); 
-      sprintf(c, "offset:%d ", cal);
+      si5351.set_freq((bfo_freq - frequency) * 100LL, SI5351_CLK2);
+      ltoa(cal, b, DEC);
+      strcpy(c, "offset:");
+      strcat(c, b);
       printLine2(c);
       //calculate the correction factor in ppb and apply it
       cal = (cal * -1000000000LL) / (bfo_freq - frequency) ;
@@ -608,13 +635,13 @@ void setup()
   
   lcd.begin(16, 2);
   printBuff[0] = 0;
-  printLine1((char *)"Raduino v1.05"); 
+  printLine1((char *)"Raduino v1.06"); 
   printLine2((char *)"             "); 
     
   // Start serial and initialize the Si5351
   Serial.begin(9600);
   analogReference(DEFAULT);
-  Serial.println("*Raduino booting up\nv1.05\n");
+  Serial.println("*Raduino booting up\nv1.06\n");
 
   //configure the function button to use the external pull-up
   pinMode(FBUTTON, INPUT);
