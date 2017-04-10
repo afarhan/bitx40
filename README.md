@@ -11,6 +11,10 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.06
+- no functional changes in this version, only improved the updateDisplay routine (Jack Purdum, W8TEE)
+  (replaced fsprint commmands by str commands for code space reduction)
+
 v1.05
 - in setup(): increase the VFO drive level to 4mA to kill the birdie at 7199 kHz (Allard, PE1NWL)
   (4mA seems the optimum value in most cases, but you may try different drive strengths for best results -
