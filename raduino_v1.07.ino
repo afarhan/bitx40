@@ -396,7 +396,6 @@ void USBoffset() {
   USB_OFFSET = (analogRead(ANALOG_TUNING) * 10) - 5000 + shift;
 
   // if Fbutton is pressed again, we save the setting
-
   if (digitalRead(FBUTTON) == LOW) {
     mode = MODE_NORMAL;
     printLine2((char *)"USB Calibrated! ");
@@ -404,7 +403,6 @@ void USBoffset() {
     //Write the 2 bytes of the USB offset into the eeprom memory.
     EEPROM.put(4, USB_OFFSET);
     delay(700);
-
     printLine2((char *)"--- SETTINGS ---");
 
     // return to the original frequency that the VFO was set to before USBoffset adjustment
@@ -427,13 +425,11 @@ void USBoffset() {
 
 /**
    The setFrequency is a little tricky routine, it works differently for USB and LSB
-
    The BITX BFO is permanently set to lower sideband, (that is, the crystal frequency
    is on the higher side slope of the crystal filter).
-
+   
    LSB: The VFO frequency is subtracted from the BFO. Suppose the BFO is set to exactly 12 MHz
    and the VFO is at 5 MHz. The output will be at 12.000 - 5.000  = 7.000 MHz
-
    USB: The BFO is subtracted from the VFO. Makes the LSB signal of the BITX come out as USB!!
    Here is how it will work:
    Consider that you want to transmit on 14.000 MHz and you have the BFO at 12.000 MHz. We set
@@ -453,7 +449,6 @@ void setFrequency(unsigned long f) {
   else {
     si5351.set_freq((bfo_freq - f) * 100ULL, SI5351_CLK2);
   }
-
   frequency = f;
 }
 
@@ -465,12 +460,10 @@ void setFrequency(unsigned long f) {
    base to TX_RX line through a 4.7K resistr(as defined at the top of this source file)
    collecter to the PTT line
    Now, connect the PTT to the control connector's PTT line (see the definitions on the top)
-
    Yeah, surprise! we have CW supported on the Raduino
 */
 
 void checkTX() {
-
   // We don't check for ptt when transmitting cw
   // as long as the cwTimeout is non-zero, we will continue to hold the
   // radio in transmit mode
@@ -554,12 +547,19 @@ int btnDown() {
 
 /**
    The Function Button is used for several functions
-   1 click: swap VFO A/B
-   2 clicks: toggle RIT on/off
-   3 clicks: toggle LSB/USB
-   4 clicks: VFO calibration
-   5 clicks: USB offset calibration
-   long press: VFO A=B
+   NORMAL menu (normal operation):
+   1 short (<0.5 sec) press: swap VFO A/B
+   2 short presses: toggle RIT on/off
+   3 short presses: toggle LSB/USB
+   long press (>2 Sec): VFO A=B
+   VERY long press (>5 sec): go to SETTINGS menu
+   SETTINGS menu:
+   1 short press: LSB calibration
+   2 short presses: USB calibration
+   3 short presses: VFO drive level in LSB mode
+   4 short presses: VFO drive level in USB mode
+   5 short presses: Tuning range upper&lower limit settings
+   long press: exit SETTINGS menu - go back to NORMAL menu
 */
 void checkButton() {
 
