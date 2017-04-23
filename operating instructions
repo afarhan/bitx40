@@ -1,0 +1,44 @@
+User instructions for Raduino_v1.07
+
+After the version update the calibration value as well as the tuning pot range settings will be erased.
+Use the Function Button to calibrate and set the tuning range again.
+
+Don't have a Function Button yet?
+If you don't install a pushbutton then the basic functions will still work as before
+(of course you will miss the dual VFO and USB capability though).
+Calibration can still be done in the old fashioned way using the CAL button.
+The tuning range settings can be 'hard coded' by uncommenting lines 1062 and 1063 and adapting the values to your needs.
+
+FUNCTION BUTTON WIRING:
+Use a pushbutton to simply momentarily ground pin A3 (orange wire).
+Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
+
+FUNCTION BUTTON USAGE:
+
+Several functions are available with just one pushbutton.
+In normal mode:
+1 short press - toggle VFO A/B
+2 short presses - toggle RIT on/off (not implemented yet)
+3 short presses - toggle LSB/USB mode
+long press (> 2 seconds) - VFO A=B
+
+When you press the Fbutton VERY long (>5 seconds) you will enter the SETTINGS menu.
+In SETTINGS mode:
+1 short press - VFO frequency calibration in LSB mode
+2 short presses - VFO frequency calibration in USB mode
+3 short presses - set VFO drive level in LSB mode
+4 short presses - set VFO drive level in USB mode
+5 short presses - set lower and upper level of tuning range
+long press (>2 seconds) - return to the NORMAL mode
+
+All user settings are stored in EEPROM and read during startup.
+
+When you keep the Fbutton pressed during power on all user settings will be erased and set back to "factory" values:
+VFO calibration (LSB): 0
+VFO offset (USB): 1500 Hz
+VFO drive level (LSB): 4mA
+VFO drive level (USB): 8mA
+Tuning pot lower limit: 7100 kHz
+Tuning pot upper limit: 7150 kHz
+
+
