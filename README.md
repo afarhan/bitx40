@@ -11,6 +11,14 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.07
+- Added functionality via the Function Button:
+  Use a pusbutton to momentarily ground pin A3 (orange wire). Do NOT install an external pull-up restistor!
+- dual VFO capability (RIT is not yet working though)
+- LSB/USB mode
+- Settings menu for calibration, tuning range, VFO drive level
+- All settings are stored in EEPROM and read during startup
+
 v1.06
 - no functional changes in this version, only improved the updateDisplay routine (Jack Purdum, W8TEE)
   (replaced fsprint commmands by str commands for code space reduction)
