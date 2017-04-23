@@ -39,7 +39,7 @@
     Si5351 object to control the clocks.
 */
 #include <Wire.h>
-#include <si5351.h>
+#include <si5351.h> // https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
 Si5351 si5351;
 /**
    The Raduino board is the size of a standard 16x2 LCD panel. It has three connectors:
