@@ -18,6 +18,7 @@ v1.07
 - LSB/USB mode
 - Settings menu for calibration, tuning range, VFO drive level
 - All settings are stored in EEPROM and read during startup
+- Detailed instructions: https://github.com/amunters/bitx40/blob/master/operating%20instructions
 
 v1.06
 - no functional changes in this version, only improved the updateDisplay routine (Jack Purdum, W8TEE)
