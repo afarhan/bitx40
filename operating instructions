@@ -50,7 +50,7 @@ In SETTINGS mode:
 
   - tune to 7199 kHz, on most BITX4 transceivers a strong birdie is heard
   - give 3 short presses to the FB to enter the VFO drive level adjustment
-  - the default drive level in LSB mode is 2mA
+  - the default drive level in LSB mode is 4mA
   - using the tuning pot, try different drive levels (2,4,6,8 mA) to minimize the strength of the birdie
   - press the FB again to save the setting
   
