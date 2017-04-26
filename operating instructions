@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.07
+User instructions for Raduino_v1.08
 
 After the version update the calibration value as well as the tuning pot range settings will be erased.
 Use the Function Button to calibrate and set the tuning range again.
@@ -7,7 +7,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work as before
 (of course you will miss the dual VFO and USB capability though).
 Calibration can still be done in the old fashioned way using the CAL button (red wire).
-The tuning range settings can be 'hard coded' by uncommenting lines 1062 and 1063 and adapting the values to your needs.
+The tuning range settings can be 'hard coded' by uncommenting lines 1154 and 1155 and adapting the values to your needs.
 
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (orange wire) and ground.
