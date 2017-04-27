@@ -9,7 +9,14 @@ This issue is still under investigation. See https://github.com/etherkit/Si5351A
 # Until this is solved, please use v2.01 of the si5351 library.
 The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
 
+Operating instructions: https://github.com/amunters/bitx40/blob/master/operating%20instructions
+
 Revision record
+
+v1.08
+- mode (LSB or USB) of each VFO A and B is now also memorized
+- the BITX status (VFO frequencies, modes) is now stored in EEPROM every 10 seconds and retrieved during start up
+- a warning message "uncalibrated" is displayed when calibration data has been erased
 
 v1.07
 - Added functionality via the Function Button:
@@ -18,7 +25,6 @@ v1.07
 - LSB/USB mode
 - Settings menu for calibration, tuning range, VFO drive level
 - All settings are stored in EEPROM and read during startup
-- Detailed instructions: https://github.com/amunters/bitx40/blob/master/operating%20instructions
 
 v1.06
 - no functional changes in this version, only improved the updateDisplay routine (Jack Purdum, W8TEE)
