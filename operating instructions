@@ -85,4 +85,4 @@ Tuning pot lower limit: 7100 kHz
 Tuning pot upper limit: 7150 kHz
 Mode LSB for both VFO A and B
 
-
+A warning message "uncalibrated" will be displayed until you recalibrate the VFO again.
