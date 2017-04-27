@@ -83,5 +83,6 @@ VFO drive level (LSB): 4mA
 VFO drive level (USB): 8mA
 Tuning pot lower limit: 7100 kHz
 Tuning pot upper limit: 7150 kHz
+Mode LSB for both VFO A and B
 
 
