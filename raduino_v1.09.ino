@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.08 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.09 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -89,17 +89,22 @@ int count = 0;
 
    Though, this can be assigned anyway, for this application of the Arduino, we will make the following
    assignment
-   A2 will connect to the PTT line, which is the usually a part of the mic connector
-   A3 is connected to a push button that can momentarily ground this line. This will be used to switch between different modes, etc.
-   A6 is to implement a keyer, it is reserved and not yet implemented
-   A7 is connected to a center pin of good quality 100K or 10K linear potentiometer with the two other ends connected to
-   ground and +5v lines available on the connector. This implments the tuning mechanism
+   A0 (digital input) for sensing the PTT. Connect to the output of U3 (LM7805) of the BITX40.
+      This way the A0 input will see 0V (LOW) when PTT is not pressed, +5V (HIGH) when PTT is pressed.
+   A1 (digital input) is to implement a keyer, it is reserved and not yet implemented
+   A2 (digital input) can be used for calibration by grounding this line (not required when you have the Function Button at A3)
+   A3 (digital input) is connected to a push button that can momentarily ground this line. This Function Button will be used to switch between different modes, etc.
+   A4 (already in use for talking to the SI5351)
+   A5 (already in use for talking to the SI5351)
+   A6 (analog input) is not currently used
+   A7 (analog input) is connected to a center pin of good quality 100K or 10K linear potentiometer with the two other ends connected to
+       ground and +5v lines available on the connector. This implments the tuning mechanism.
 */
 
 #define ANALOG_KEYER (A1)
 #define CAL_BUTTON (A2)
 #define FBUTTON (A3)
-#define PTT (A6)
+#define PTT (A0)
 #define ANALOG_TUNING (A7)
 
 /**
@@ -121,16 +126,9 @@ int count = 0;
 /**
     The raduino has a number of timing parameters, all specified in milliseconds
     CW_TIMEOUT : how many milliseconds between consecutive keyup and keydowns before switching back to receive?
-    The next set of three parameters determine what is a tap, a double tap and a hold time for the funciton button
-    TAP_DOWN_MILLIS : upper limit of how long a tap can be to be considered as a button_tap
-    TAP_UP_MILLIS : upper limit of how long a gap can be between two taps of a button_double_tap
-    TAP_HOLD_MILIS : many milliseconds of the buttonb being down before considering it to be a button_hold
 */
 
-#define TAP_UP_MILLIS (500)
-#define TAP_DOWN_MILLIS (600)
-#define TAP_HOLD_MILLIS (2000)
-#define CW_TIMEOUT (600l) // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs
+#define CW_TIMEOUT (600L) // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs
 
 /**
    The Raduino supports two VFOs : A and B and receiver incremental tuning (RIT).
@@ -141,11 +139,7 @@ int count = 0;
 */
 #define VFO_A 0
 #define VFO_B 1
-byte ritOn = 0;
-byte vfoActive = VFO_A;
-byte mode_A = 0; // LSB:0, USB:1
-byte mode_B = 0; // LSB:0, USB:1
-unsigned long vfoA = 7100000UL, vfoB = 7100000UL, sideTone = 800;
+unsigned long vfoA, vfoB, sideTone = 800;
 
 /**
    In USB mode we need to apply some frequency offset, so that zerobeat in USB is same as in LSB
@@ -161,10 +155,9 @@ int USBdrive;
 /**
    Raduino needs to keep track of current state of the transceiver. These are a few variables that do it
 */
-
+byte ritOn, vfoActive, isUSB, mode_A, mode_B;
 byte inTx = 0;
 byte keyDown = 0;
-byte isUSB = 0;
 unsigned long cwTimeout = 0;
 byte txFilter = 0;
 
@@ -180,7 +173,7 @@ byte txFilter = 0;
     The tuning control works in steps of 50Hz each for every increment between 10 and 10230.
     Hence the turning the pot fully from one end to the other will cover 50 x 10220 = 511 KHz.
     But if we use the standard 1-turn pot, then a tuning range of 500 kHz would be too much.
-    (tuning would become very touchy). In the next few lines we can limit the tuning range
+    (tuning would become very touchy). In the SETTINGS menu we can limit the tuning range
     depending on the potentiometer used and the band section of interest. Tuning beyond the
     limits is still possible by the 'scan-up' and 'scan-down' mode at the end of the pot.
     At the two ends, that is, the tuning starts stepping up or down in 10 KHz steps.
@@ -188,12 +181,12 @@ byte txFilter = 0;
 */
 
 int TUNING_RANGE; // tuning range (in kHz) of the tuning pot
-unsigned long baseTune; // frequency (Hz) when tuning pot is at minimum position
+unsigned long baseTune = 7100000UL; // frequency (Hz) when tuning pot is at minimum position
 
 unsigned long bfo_freq = 11998000UL;
 int old_knob = 0;
 
-#define CW_OFFSET (800l)
+#define CW_OFFSET (800L)
 
 #define LOWEST_FREQ  (6995000L) // absolute minimum frequency (Hz)
 #define HIGHEST_FREQ (7500000L) //  absolute maximum frequency (Hz)
@@ -364,7 +357,7 @@ void calibrate() {
 
 
 /**
-   When LSB is calibrated, USB may still not be zero beat.
+   Even when LSB is calibrated, USB may still not be zero beat.
    USB calibration sets the accurate readout of the tuned frequency by applying an extra offset in USB mode only
    To calibrate, follow these steps:
    1. First make sure the LSB is calibrated correctly
@@ -470,16 +463,26 @@ void checkTX() {
   if (cwTimeout > 0)
     return;
 
-  if (digitalRead(PTT) == 0 && inTx == 0) {
+  if (digitalRead(PTT) == 1 && inTx == 0) {
+    // go in transmit mode
     inTx = 1;
     digitalWrite(TX_RX, 1);
     updateDisplay();
+    if (ritOn) { // when RIT is on, swap the VFO's
+      swapVFOs();
+    }
+    printLine2((char *)"                ");
   }
 
-  if (digitalRead(PTT) == 1 && inTx == 1) {
+  if (digitalRead(PTT) == 0 && inTx == 1) {
+    //go in receive mode
     inTx = 0;
     digitalWrite(TX_RX, 0);
     updateDisplay();
+    if (ritOn) { // when RIT is on, swap the VFO's back to original state
+      swapVFOs();
+    }
+    printLine2((char *)"                ");
   }
 }
 
@@ -548,7 +551,7 @@ int btnDown() {
 /**
    The Function Button is used for several functions
    NORMAL menu (normal operation):
-   1 short (<0.5 sec) press: swap VFO A/B
+   1 short press (<0.5 sec): swap VFO A/B
    2 short presses: toggle RIT on/off
    3 short presses: toggle LSB/USB
    long press (>2 Sec): VFO A=B
@@ -654,6 +657,7 @@ void checkButton() {
     // Normal menu options
     case 1:
       swapVFOs();
+      EEPROM.put(22, vfoActive);
       delay(700);
       printLine2((char *)"                ");
       break;
@@ -716,7 +720,6 @@ void swapVFOs() {
   long knob = knob_position(); // get the current tuning knob position
   baseTune = frequency - (50L * knob * TUNING_RANGE / 500);
   updateDisplay();
-  EEPROM.put(26, vfoActive);
   printLine2((char *)"VFO's swapped!  ");
 }
 
@@ -729,6 +732,7 @@ void toggleRIT() {
     ritOn = 1;
     printLine2((char *)"RIT is now ON!  ");
   }
+  EEPROM.put(23, ritOn);
   updateDisplay();
 }
 
@@ -750,11 +754,11 @@ void setUSB() {
   updateDisplay();
   if (vfoActive == VFO_A) {
     mode_A = 1;
-    EEPROM.put(24, mode_A);
+    EEPROM.put(20, mode_A);
   }
   else {
     mode_B = 1;
-    EEPROM.put(25, mode_B);
+    EEPROM.put(21, mode_B);
   }
 }
 
@@ -765,20 +769,21 @@ void setLSB() {
   updateDisplay();
   if (vfoActive == VFO_A) {
     mode_A = 0;
-    EEPROM.put(24, mode_A);
+    EEPROM.put(20, mode_A);
   }
   else {
     mode_B = 0;
-    EEPROM.put(25, mode_B);
+    EEPROM.put(21, mode_B);
   }
 }
 
+// resetting the VFO's will set both VFO's to the current frequency and mode
 void resetVFOs() {
   printLine2((char *)"VFO A=B !       ");
   vfoA = vfoB = frequency;
   mode_A = mode_B = isUSB;
-  EEPROM.put(24, mode_A);
-  EEPROM.put(25, mode_B);
+  EEPROM.put(20, mode_A);
+  EEPROM.put(21, mode_B);
   updateDisplay();
   return;
 }
@@ -837,55 +842,35 @@ void VFOdrive() {
   }
 }
 
+// this function allows the user to set the tuning range dependinn on the type of potentiometer
+// for a standard 1-turn pot, a range of 50 KHz is recommended
+// for a 10-turn pot, a tuning range of 200 kHz is recommended
 void set_tune_range() {
 
-  static int limitval;
-  static byte lowerlimit;
-
-  if (mode != MODE_TUNERANGE) {
-    baseTune = 7000000L;
-    lowerlimit = 1; // whether we are setting the upper or lower limit of the tuning range
-  }
-
-  //generate values 7000-7500 from the tuning pot
-  limitval = baseTune / 1000 + 10 * int(analogRead(ANALOG_TUNING) / 20);
+  //generate values 10-520 from the tuning pot
+  TUNING_RANGE = 10 + 10 * int(analogRead(ANALOG_TUNING) / 20);
 
   // if Fbutton is pressed again, we save the setting
-
   if (digitalRead(FBUTTON) == LOW) {
-
-    if (lowerlimit) {
-      baseTune = limitval * 1000L;
-      //Write the 4 bytes of the lower limit into the eeprom memory.
-      EEPROM.put(10, baseTune);
-      lowerlimit = 0;
-      printLine2((char *)"lower limit set!");
-    }
-    else {
-      TUNING_RANGE = limitval - (baseTune / 1000L);
-      //Write the 2 bytes of the upper limit into the eeprom memory.
-      EEPROM.put(14, TUNING_RANGE);
-      printLine2((char *)"upper limit set!");
-      mode = MODE_NORMAL;
-    }
-
+    //Write the 2 bytes of the tuning range into the eeprom memory.
+    EEPROM.put(10, TUNING_RANGE);
+    printLine2((char *)"tune range set! ");
+    mode = MODE_NORMAL;
     delay(700);
     printLine2((char *)"--- SETTINGS ---");
-
   }
+  
   else {
     mode = MODE_TUNERANGE;
-    itoa(limitval, b, DEC);
-    if (lowerlimit)
-      strcpy(c, "lower: ");
-    else
-      strcpy(c, "upper: ");
+    itoa(TUNING_RANGE, b, DEC);
+    strcpy(c, "range: ");
     strcat(c, b);
-    strcat(c, " kHz ");
+    strcat(c, " kHz  ");
     printLine2(c);
   }
 }
 
+// function to read the position of the tuning knob
 long knob_position() {
   long knob = 0;
   // the knob value normally ranges from 0 through 1023 (10 bit ADC)
@@ -898,6 +883,12 @@ long knob_position() {
   //now the knob value ranges from -100 through 10130
   return knob;
 }
+
+// Many BITX40's have a strong birdie at 7199 kHz (LSB).
+// This birdie may be eliminated by using a different VFO drive level in LSB mode.
+// In USB mode, a high drive level may be needed to compensate for the attenuation of
+// higher VFO frequencies
+// The drive level for each mode can be set in the SETTINGS menu
 
 void set_drive_level(int level) {
   switch (level) {
@@ -967,6 +958,11 @@ void doTuning() {
       updateDisplay();
     }
   }
+
+  if (vfoActive == VFO_A)
+    vfoA = frequency;
+  else
+    vfoB = frequency;
 }
 
 byte raduino_version; //version identifier
@@ -983,37 +979,44 @@ void factory_settings() {
   delay(10);
   EEPROM.put(8, 8); //VFO drive level in USB mode (8 mA)
   delay(10);
-  EEPROM.put(10, 7100000UL); //baseTune (7100 kHz)
+  EEPROM.put(10, 50); //tuning range (50 kHz)
   delay(10);
-  EEPROM.put(14, 50); //tuning range (50 kHz)
+  EEPROM.put(12, 7125000UL); // VFO A frequency (7125 kHz)
   delay(10);
-  EEPROM.put(16, 7125000UL); // VFO A frequency (7125 kHz)
+  EEPROM.put(16, 7125000UL); // VFO B frequency (7125 kHz)
   delay(10);
-  EEPROM.put(20, 7125000UL); // VFO B frequency (7125 kHz)
+  EEPROM.put(20, 0); // mode A (LSB)
   delay(10);
-  EEPROM.put(24, 0); // mode A (LSB)
+  EEPROM.put(21, 0); // mode B (LSB)
   delay(10);
-  EEPROM.put(25, 0); // mode B (LSB)
+  EEPROM.put(22, 0); // vfoActive (VFO A)
   delay(10);
-  EEPROM.put(26, 0); // vfoActive (VFO A)
+  EEPROM.put(23, 0); // RIT off
   delay(10);
-  EEPROM.put(27, raduino_version); //version identifier
+  EEPROM.put(24, raduino_version); //version identifier
   delay(2000);
 }
 
-// save the frequency of the active VFO every 10 seconds
+// save the VFO frequencies when they didn't change for more than 30 seconds
+// (EEPROM.put writes the data only if it is different from the previous content of the eeprom location)
+
 void save_frequency() {
   static long t3;
-  if (millis() - t3 > 10000) {
-    if (vfoActive == VFO_A) {
-      EEPROM.put(16, frequency); // save VFO_A frequency
+  static unsigned long old_vfoA, old_vfoB;
+  if ((vfoA == old_vfoA) && (vfoB == old_vfoB)) {
+    if (millis() - t3 > 30000) {
+      EEPROM.put(12, vfoA); // save VFO_A frequency
+      delay(10);
+      EEPROM.put(16, vfoB); // save VFO_B frequency
+      delay(10);
+      t3 = millis();
     }
-    else {
-      EEPROM.put(20, frequency); // save VFO_B frequency
-    }
-    delay(10);
+  }
+  else {
     t3 = millis();
   }
+  old_vfoA = vfoA;
+  old_vfoB = vfoB;
 }
 
 /**
@@ -1025,8 +1028,8 @@ void save_frequency() {
    Choose Serial Monitor from Arduino IDE's Tools menu to see the Serial.print messages
 */
 void setup() {
-  raduino_version = 9;
-  strcpy (c, "Raduino v1.08   ");
+  raduino_version = 10;
+  strcpy (c, "Raduino v1.09   ");
 
   lcd.begin(16, 2);
   printBuff[0] = 0;
@@ -1038,11 +1041,8 @@ void setup() {
 
   //configure the function button to use the internal pull-up
   pinMode(FBUTTON, INPUT_PULLUP);
-  digitalWrite(FBUTTON, HIGH);
   pinMode(PTT, INPUT);
-  digitalWrite(PTT, HIGH);
   pinMode(CAL_BUTTON, INPUT_PULLUP);
-  digitalWrite(CAL_BUTTON, HIGH);
   pinMode(CW_KEY, OUTPUT);
   pinMode(CW_TONE, OUTPUT);
   digitalWrite(CW_KEY, 0);
@@ -1053,7 +1053,7 @@ void setup() {
   // or after a version update,
   // then all settings will be restored to the standard "factory" values
   byte old_version;
-  EEPROM.get(27, old_version); // previous sketch version
+  EEPROM.get(24, old_version); // previous sketch version
   delay(10);
   if ((digitalRead(CAL_BUTTON) == LOW) || (digitalRead(FBUTTON) == LOW) || (old_version != raduino_version)) {
     factory_settings();
@@ -1072,6 +1072,7 @@ void setup() {
   //Serial.println(USB_OFFSET);
   delay(10);
 
+  //display warning message when calibration data was erased
   if ((cal == 0) && (USB_OFFSET == 1500)) {
     printLine2((char *)"uncalibrated!");
   }
@@ -1084,35 +1085,35 @@ void setup() {
   //Serial.println(USBdrive);
   delay(10);
 
-  EEPROM.get(10, baseTune);
-  //Serial.println(baseTune);
-  delay(10);
-
-  EEPROM.get(14, TUNING_RANGE);
+  EEPROM.get(10, TUNING_RANGE);
   //Serial.println(TUNING_RANGE);
   delay(10);
 
-  EEPROM.get(16, vfoA);
+  EEPROM.get(12, vfoA);
   //Serial.println(vfoA);
   delay(10);
 
-  EEPROM.get(20, vfoB);
+  EEPROM.get(16, vfoB);
   //Serial.println(vfoB);
   delay(10);
 
-  EEPROM.get(24, mode_A);
+  EEPROM.get(20, mode_A);
   //Serial.println(mode_A);
   delay(10);
 
-  EEPROM.get(25, mode_B);
+  EEPROM.get(21, mode_B);
   //Serial.println(mode_B);
   delay(10);
 
-  EEPROM.get(26, vfoActive);
+  EEPROM.get(22, vfoActive);
   //Serial.println(vfoActive);
   delay(10);
 
-  EEPROM.get(27, raduino_version);
+  EEPROM.get(23, ritOn);
+  //Serial.println(vfoActive);
+  delay(10);
+
+  EEPROM.get(24, raduino_version);
   //Serial.println(raduino_version);
   delay(10);
 
@@ -1181,14 +1182,14 @@ void loop() {
       VFOdrive();
       delay(50);
       return;
-    case 4: // set upper and lower limits of tuning range
+    case 4: // set tuning range
       set_tune_range();
       delay(50);
       return;
   }
   /*
-    checkCW();
-    checkTX(); */
+    checkCW(); */
+  checkTX();
   save_frequency();
   checkButton();
   doTuning();
