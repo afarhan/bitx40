@@ -13,6 +13,11 @@ Operating instructions: https://github.com/amunters/bitx40/blob/master/operating
 
 Revision record
 
+v1.09
+- added RIT (SPLIT) functionality. This requires a PTT sense line connected to pin A0 (black wire).
+- simplified tuning range setting in SETTINGS menu
+- less frequent EEPROM writes so that EEPROM will last longer
+
 v1.08
 - mode (LSB or USB) of each VFO A and B is now also memorized
 - the BITX status (VFO frequencies, modes) is now stored in EEPROM every 10 seconds and retrieved during start up
