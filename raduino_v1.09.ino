@@ -1153,7 +1153,6 @@ void setup() {
   //If no FButton is installed, and you still want to use custom tuning range settings,
   //uncomment the following 2 lines and adapt the values to your liking:
   //TUNING_RANGE = 50;    // tuning range (in kHz) of the tuning pot
-  //baseTune = 7100000UL; // frequency (Hz) when tuning pot is at minimum position
 }
 
 void loop() {
