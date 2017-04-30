@@ -3,10 +3,15 @@ User instructions for Raduino_v1.09
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
 
+10-TURN TUNING POT
+The default tuning range with the standard supplied 1-turn tuning pot is only 50 kHz.
+If you install a 10-turn pot instead you can extend the tuning range for full 40m band coverage.
+Using the Function Button, go to the SETTINGS menu and set the desired tuning range.
+
 Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
-Calibration can still be done in the old fashioned way using the CAL button (red wire).
+Calibration can still be done in the old fashioned way using the CAL button (pin A2 - red wire).
 The tuning range setting can be 'hard coded' by uncommenting line 1155 and adapting the value to your needs.
 
 PTT SENSE WIRING:
@@ -14,7 +19,8 @@ Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regul
 See https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
-The PTT SENSE is required for the RIT (SPLIT) functionality.
+The PTT SENSE is only required for the RIT (SPLIT) functionality. If you don't install the PTT sense everything else
+will still work normally.
 
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (orange wire) and ground.
@@ -23,14 +29,14 @@ Arduino's internal pull-up resistors are used, therefore do NOT install an exter
 FUNCTION BUTTON USAGE:
 
 Several functions are available with just one pushbutton.
-In normal mode:
+In normal operation mode:
 1 short press - toggle VFO A/B
-2 short presses - toggle RIT on/off
+2 short presses - toggle RIT on/off (PTT sense is required for this function)
 3 short presses - toggle LSB/USB mode
 long press (> 2 seconds) - VFO A=B
 
 When you press the Fbutton VERY long (>5 seconds) you will enter the SETTINGS menu.
-In SETTINGS mode:
+In the SETTINGS menu:
 
 1 short press - VFO frequency calibration in LSB mode
 
