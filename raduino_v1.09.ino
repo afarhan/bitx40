@@ -1151,8 +1151,10 @@ void setup() {
   updateDisplay();
 
   //If no FButton is installed, and you still want to use custom tuning range settings,
-  //uncomment the following 2 lines and adapt the values to your liking:
+  //uncomment the following line and adapt the value to your liking:
   //TUNING_RANGE = 50;    // tuning range (in kHz) of the tuning pot
+   
+  //(recommended value for a 1-turn pot: 50 kHz,  for a 10-turn pot: 200 kHz)
 }
 
 void loop() {
