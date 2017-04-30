@@ -1,11 +1,11 @@
 User instructions for Raduino_v1.09
 
-After the version update the calibration value as well as the tuning pot range settings will be erased.
-Use the Function Button to calibrate and set the tuning range again.
+After the version update all calibration data, drive level settings, etc will be erased.
+Before updating note down your cal values etc. After the update use the Function Button to set them back again.
 
 Don't have a Function Button yet?
-If you don't install a pushbutton then the basic functions will still work as before
-(of course you will miss the dual VFO and USB capability though).
+If you don't install a pushbutton then the basic functions will still work.
+(of course you will miss the dual VFO, RIT and USB capability then).
 Calibration can still be done in the old fashioned way using the CAL button (red wire).
 The tuning range settings can be 'hard coded' by uncommenting lines 1154 and 1155 and adapting the values to your needs.
 
