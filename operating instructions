@@ -11,6 +11,7 @@ The tuning range setting can be 'hard coded' by uncommenting line 1155 and adapt
 
 PTT SENSE WIRING:
 Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
+See https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
 The PTT SENSE is required for the RIT (SPLIT) functionality.
