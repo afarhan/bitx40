@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.08
+User instructions for Raduino_v1.09
 
 After the version update the calibration value as well as the tuning pot range settings will be erased.
 Use the Function Button to calibrate and set the tuning range again.
@@ -9,6 +9,12 @@ If you don't install a pushbutton then the basic functions will still work as be
 Calibration can still be done in the old fashioned way using the CAL button (red wire).
 The tuning range settings can be 'hard coded' by uncommenting lines 1154 and 1155 and adapting the values to your needs.
 
+PTT SENSE WIRING:
+Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
+When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
+When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
+The PTT SENSE is required for the RIT (SPLIT) functionality.
+
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (orange wire) and ground.
 Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
@@ -18,7 +24,7 @@ FUNCTION BUTTON USAGE:
 Several functions are available with just one pushbutton.
 In normal mode:
 1 short press - toggle VFO A/B
-2 short presses - toggle RIT on/off (not implemented yet)
+2 short presses - toggle RIT on/off
 3 short presses - toggle LSB/USB mode
 long press (> 2 seconds) - VFO A=B
 
@@ -62,15 +68,13 @@ In SETTINGS mode:
   - using the tuning pot, try different drive levels (2,4,6,8 mA) for maximum signal to noise ratio
   - press the FB again to save the setting
   
-5 short presses - set lower and upper level of tuning range
+5 short presses - set tuning range
 
-  - the default tuning range is 7100-7150 kHz, this is OK for a standard 1-turn pot
+  - the default tuning range is 50 kHz (7100-7150 kHz), this is OK for a standard 1-turn pot
   - if you install a multi-turn pot instead you can extend the tuning range
-  - using the tuning pot, set the lower limit of the tuning range (for example 7000 kHz)
-  - press the FB once
-  - using the tuning pot, set the upper limit of the tuning range (for example 7200 kHz)
-  - press the FB again
-  - the settings will be saved - the tuning pot will now range from 7000-7200 kHz
+  - using the tuning pot, set the desired tuning range
+  - recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
+  - press the FB again to save the setting
   
 long press (>2 seconds) - return to the NORMAL mode
 
