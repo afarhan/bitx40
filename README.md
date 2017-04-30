@@ -14,7 +14,8 @@ Operating instructions: https://github.com/amunters/bitx40/blob/master/operating
 Revision record
 
 v1.09
-- added RIT (SPLIT) functionality. This requires a PTT sense line connected to pin A0 (black wire).
+- added RIT (SPLIT) functionality. This requires a PTT sense line connected to pin A0 (black wire)
+  (see https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png for wiring instructions)
 - simplified tuning range setting in SETTINGS menu
 - less frequent EEPROM writes so that EEPROM will last longer
 
