@@ -7,7 +7,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
 Calibration can still be done in the old fashioned way using the CAL button (red wire).
-The tuning range settings can be 'hard coded' by uncommenting lines 1154 and 1155 and adapting the values to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1155 and adapting the value to your needs.
 
 PTT SENSE WIRING:
 Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
