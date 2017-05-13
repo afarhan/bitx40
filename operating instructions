@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.09
+User instructions for Raduino_v1.10
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -12,7 +12,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
 Calibration can still be done in the old fashioned way using the CAL button (pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1155 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1260 and adapting the value to your needs.
 
 PTT SENSE WIRING:
 Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
@@ -21,6 +21,30 @@ When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
 The PTT SENSE is only required for the RIT (SPLIT) functionality. If you don't install the PTT sense everything else
 will still work normally.
+
+CW-CARRIER WIRING:
+Connect a wire from Raduino ouput D6 (connector P3, pin 15), via a 47K series resistor, to the input of the mixer.
+See https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png
+When the key is down ouput D6 will be HIGH. This injects some DC current into the mixer so that it becomes unbalanced.
+As a result a CW carrier will be generated.
+The CW-CARRIER is only required for CW functionality. If you don't install this line everything else
+will still work normally.
+
+CW sidetone WIRING:
+A sidetone is available at Raduino output D5 (connector P3, pin 14). This signal can be fed to the speaker/headphones
+in parallel to the output from the existing audio amplifier.
+See https://github.com/amunters/bitx40/blob/master/sidetone%20wiring.png
+The desired sidetone pitch can be set using the Function Button in the SETTINGS menu.
+The CW-sidetone is only used for CW operation. If you don't install this line everything else
+will still work normally.
+
+TX-RX WIRING:
+See https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png
+When the key is down output D7 will be HIGH. It will only go LOW again when the key has been up for at least 250 ms.
+This signal is used to drive a PNP transistor which is connected in parallel to the exsisting PTT switch. So the TX relays
+will be activated as long as D7 is HIGH.
+The TX-RX is only required for CW semi break-in functionality. If you don't install this line CW operation is still possible
+but you will need to manually press the PTT switch to transmit.
 
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (orange wire) and ground.
@@ -82,7 +106,13 @@ In the SETTINGS menu:
   - using the tuning pot, set the desired tuning range
   - recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
   - press the FB again to save the setting
-  
+
+6 short presses - set sidetone pitch
+
+ - the sidetone is generated
+ - using the tuning pot set the desired sidetone pitch
+ - press the FB again to save the setting
+ 
 long press (>2 seconds) - return to the NORMAL mode
 
 All user settings are stored in EEPROM and retrieved during startup.
@@ -92,8 +122,8 @@ VFO calibration (LSB): 0
 VFO offset (USB): 1500 Hz
 VFO drive level (LSB): 4mA
 VFO drive level (USB): 8mA
-Tuning pot lower limit: 7100 kHz
-Tuning pot upper limit: 7150 kHz
+Tuning pot range: 50 kHz
 Mode LSB for both VFO A and B
+Side tone: 800 Hz
 
 A warning message "uncalibrated" will be displayed until you recalibrate the VFO again.
