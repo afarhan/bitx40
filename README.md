@@ -21,7 +21,7 @@ v1.10
   Both sidebands (CWU or CWL) are available for CW operation.
 - Semi break-in for CW
   This requires the TX-RX line from Raduino output D7 (connector P3, pin 16) to override the existing PTT
-  switch using a PNP transistor. 
+  switch using a NPN transistor. 
   (see https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png for wiring instructions)  
 - CW side-tone
   This requires some wiring from Raduino output D5 (connector P3, pin 14) to the speaker.
