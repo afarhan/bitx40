@@ -13,6 +13,24 @@ Operating instructions: https://github.com/amunters/bitx40/blob/master/operating
 
 Revision record
 
+v1.10
+- added CW functionality (for straight morse key). This function can also be used just for tuning up.
+  This requires the CW-CARRIER line connected to Raduino output D6 (connector P3, pin 15).
+  (see https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png for wiring instructions).
+  The morse key itself shall be connected to Raduino pin A1 (brown wire).
+  Both sidebands (CWU or CWL) are available for CW operation.
+- Semi break-in for CW
+  This requires the TX-RX line from Raduino output D7 (connector P3, pin 16) to override the existing PTT
+  switch using a PNP transistor. 
+  (see https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png for wiring instructions)  
+- CW side-tone
+  This requires some wiring from Raduino output D5 (connector P3, pin 14) to the speaker.
+  (see https://github.com/amunters/bitx40/blob/master/sidetone%20wiring.png for wiring instructions).
+  The desired sidetone pitch can be set using the Function Button in the SETTINGS menu.
+- Frequency tuning is disabled during TX (to prevent flutter or "FM-ing" during TX).
+  This requires the PTT SENSE line connected to pin A0 (black wire).
+  (see https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png for wiring instructions).
+
 v1.09
 - added RIT (SPLIT) functionality. This requires a PTT sense line connected to pin A0 (black wire)
   (see https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png for wiring instructions)
