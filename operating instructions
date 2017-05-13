@@ -41,10 +41,13 @@ will still work normally.
 TX-RX WIRING:
 See https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png
 When the key is down output D7 will be HIGH. It will only go LOW again when the key has been up for at least 250 ms.
-This signal is used to drive a PNP transistor which is connected in parallel to the exsisting PTT switch. So the TX relays
-will be activated as long as D7 is HIGH.
-The TX-RX is only required for CW semi break-in functionality. If you don't install this line CW operation is still possible
-but you will need to manually press the PTT switch to transmit.
+This signal is used to drive a PNP transistor which is connected in parallel to the existing PTT switch, so that it will
+bypass the PTT switch during CW operation. As as result the relays will be activated as long as D7 is HIGH.
+(Suggestion: If you have a combined microphone/PTT connector, the PTT bypass transistor can be soldered directly on the
+back of it).
+The TX-RX is currently only required for CW semi break-in functionality. If you don't install this line CW operation is
+still possible but you will need to manually press the PTT switch to transmit.
+(The PTT bypass transistor may be used in the future for VOX functionality as well).
 
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (orange wire) and ground.
