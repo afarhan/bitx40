@@ -101,7 +101,10 @@ In the SETTINGS menu:
   - the default drive level in USB mode is 8mA
   - using the tuning pot, try different drive levels (2,4,6,8 mA) for maximum signal to noise ratio
   - press the FB again to save the setting
-  
+  Extra Note: If the max. drive level of 8mA is still insufficient for USB mode, removal of C91 and C92 may help.
+  These caps cause too much attenuation of the VFO signal at higher frequencies. They're only needed for the analog VFO
+  and can safely be removed if you use the Raduino instead of the analog VFO.
+
 5 short presses - set tuning range
 
   - the default tuning range is 50 kHz (7100-7150 kHz), this is OK for a standard 1-turn pot
