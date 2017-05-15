@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.10 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.11 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -335,9 +335,13 @@ void calibrate() {
     EEPROM.put(0, cal);
     delay(700);
 
+    tone(CW_TONE, 600);
+    delay(50);
+    noTone(CW_TONE);
+
     printLine2((char *)"--- SETTINGS ---");
 
-    shiftBase(); //set the current knob position to the current frequency
+    shiftBase(); //align the current knob position with the current frequency
 
     calbutton_prev = HIGH;
   }
@@ -406,9 +410,14 @@ void USBoffset() {
     //Write the 2 bytes of the USB offset into the eeprom memory.
     EEPROM.put(4, USB_OFFSET);
     delay(700);
+
+    tone(CW_TONE, 600);
+    delay(50);
+    noTone(CW_TONE);
+
     printLine2((char *)"--- SETTINGS ---");
 
-    shiftBase(); //set the current knob position to the current frequency
+    shiftBase(); //align the current knob position with the current frequency
 
     setLSB();
   }
@@ -517,8 +526,10 @@ void checkTX() {
    In CW-U (USB) mode we must shift the TX frequency 800Hz up
    In CW-L (LSB) mode we must shift the TX frequency 800Hz down
 
+   The default offset (CW_OFFSET) is 800Hz, the user can change this in the SETTINGS menu.
+
    Although the frequency will be shifted during TX, the frequency shown on the display
-   (dial frequency) will not change (it will always show the RX frequency)..
+   (dial frequency) will not change (it will always show the RX frequency).
 */
 
 void checkCW() {
@@ -531,14 +542,14 @@ void checkCW() {
       }
       CWoffset = CW_OFFSET;
       setFrequency(frequency);
-      digitalWrite(TX_RX, 1);
+      digitalWrite(TX_RX, 1); // activate the PTT switch - go in transmit mode
       //give the relays a few ms to settle the T/R relays
       delay(10);
       inTx = 1;
     }
-    digitalWrite(CW_CARRIER, 1);
+    digitalWrite(CW_CARRIER, 1); // generate a carrier
     keyDown = 1;
-    tone(CW_TONE, CW_OFFSET);
+    tone(CW_TONE, CW_OFFSET); // generate a sidetone
     updateDisplay();
   }
 
@@ -549,20 +560,20 @@ void checkCW() {
 
   //if we have a keyup
   if (keyDown == 1 && digitalRead(KEY) == HIGH) {
-    digitalWrite(CW_CARRIER, 0);
+    digitalWrite(CW_CARRIER, 0); // stop generating the carrier
     keyDown = 0;
-    noTone(CW_TONE);
+    noTone(CW_TONE); // stop generating the sidetone
     cwTimeout = millis() + CW_TIMEOUT;
   }
 
-  //if we are in cw-mode and have a keyup for a longish time
+  //if we are in cw-mode and have a keyup for a "longish" time (=cwTimout value in ms)
   if (cwTimeout > 0 && inTx == 1 && cwTimeout < millis()) {
     //move the radio back to receive
-    digitalWrite(TX_RX, 0);
+    digitalWrite(TX_RX, 0); // release the PTT switch - go back to receive mode
     CWoffset = 0;
     setFrequency(frequency);
     inTx = 0;
-    cwTimeout = 0;
+    cwTimeout = 0; // reset the CW timeout counter
     if (ritOn) { // when RIT is on, swap the VFO's
       swapVFOs();
     }
@@ -608,17 +619,30 @@ void checkButton() {
     t2 = millis() - t1; //time elapsed since last button press
     if (pressed == 1) {
       if (!SETTINGSmenu && t2 > 5000) { // detect VERY long press to go to SETTINGS menu
+        tone(CW_TONE, 600);
+        delay(150);
+        tone(CW_TONE, 1200);
+        delay(250);
+        noTone(CW_TONE);
         SETTINGSmenu = 1;
         printLine2((char *)"--- SETTINGS ---");
         clicks = 10;
       }
       else if (!SETTINGSmenu && t2 > 1200) { //detect long press to reset the VFO's
+        tone(CW_TONE, 600);
+        delay(250);
+        noTone(CW_TONE);
         resetVFOs();
         delay(700);
         printLine2((char *)"                ");
         clicks = 0;
       }
       else if (SETTINGSmenu && t2 > 1200) { //detect long press to exit the SETTINGS menu
+        tone(CW_TONE, 1200);
+        delay(150);
+        tone(CW_TONE, 600);
+        delay(250);
+        noTone(CW_TONE);
         SETTINGSmenu = 0;
         clicks = 0;
         printLine2((char *)" --- NORMAL --- ");
@@ -626,7 +650,7 @@ void checkButton() {
         printLine2((char *)"                ");
       }
     }
-    if (t2 > 500) { // max time between button clicks
+    if (t2 > 500) { // max time between button clicks (ms)
       action = clicks;
       if (SETTINGSmenu) {
         clicks = 10;
@@ -644,6 +668,9 @@ void checkButton() {
       if (pressed == 0) {
         pressed = 1;
         t1 = millis();
+        tone(CW_TONE, 1200);
+        delay(50);
+        noTone(CW_TONE);
         action = 0;
         clicks++;
         if (clicks > 16) {
@@ -655,13 +682,13 @@ void checkButton() {
         switch (clicks) {
           //Normal menu options
           case 1:
-            printLine2((char *)"swap VFO's      ");
+            printLine2((char *)"Swap VFO's      ");
             break;
           case 2:
-            printLine2((char *)"toggle RIT      ");
+            printLine2((char *)"RIT ON/OFF      ");
             break;
           case 3:
-            printLine2((char *)"toggle LSB/USB  ");
+            printLine2((char *)"Toggle LSB/USB  ");
             break;
 
           //SETTINGS menu options
@@ -678,16 +705,21 @@ void checkButton() {
             printLine2((char *)"VFO drive - USB ");
             break;
           case 15:
-            printLine2((char *)"set tuning range");
+            printLine2((char *)"Set tuning range");
             break;
           case 16:
-            printLine2((char *)"set CW sidetone ");
+            printLine2((char *)"Set CW sidetone ");
             break;
         }
       }
       else if ((millis() - t1) > 600)
         printLine2((char *)"                ");
     }
+  }
+  if (action != 0 && action != 10) {
+    tone(CW_TONE, 600);
+    delay(50);
+    noTone(CW_TONE);
   }
   switch (action) {
     // Normal menu options
@@ -757,17 +789,23 @@ void swapVFOs() {
     }
   }
 
-  shiftBase(); //set the current knob position to the current frequency
+  shiftBase(); //align the current knob position with the current frequency
 }
 
 void toggleRIT() {
+  if (PTTsense_installed == 0) {
+    printLine2((char *)"Not available!  ");
+    delay(700);
+    printLine2((char *)"Install PTTsense");
+    return;
+  }
   if (ritOn) {
     ritOn = 0;
-    printLine2((char *)"RIT is now OFF! ");
+    printLine2((char *)"RIT disabled!   ");
   }
   else {
     ritOn = 1;
-    printLine2((char *)"RIT is now ON!  ");
+    printLine2((char *)"RIT enabled!    ");
   }
   EEPROM.put(27, ritOn);
   updateDisplay();
@@ -846,7 +884,7 @@ void VFOdrive() {
 
   if (digitalRead(FBUTTON) == LOW) {
     mode = MODE_NORMAL;
-    printLine2((char *)"drive level set!");
+    printLine2((char *)"Drive level set!");
 
     if (isUSB) {
       USBdrive = drive;
@@ -860,9 +898,13 @@ void VFOdrive() {
     }
     delay(700);
 
+    tone(CW_TONE, 600);
+    delay(50);
+    noTone(CW_TONE);
+
     printLine2((char *)"--- SETTINGS ---");
 
-    shiftBase(); //set the current knob position to the current frequency
+    shiftBase(); //align the current knob position with the current frequency
   }
   else {
     // while the drive level adjustment is in progress, keep tweaking the
@@ -891,9 +933,14 @@ void set_tune_range() {
   if (digitalRead(FBUTTON) == LOW) {
     //Write the 2 bytes of the tuning range into the eeprom memory.
     EEPROM.put(10, TUNING_RANGE);
-    printLine2((char *)"tune range set! ");
+    printLine2((char *)"Tune range set! ");
     mode = MODE_NORMAL;
     delay(700);
+
+    tone(CW_TONE, 600);
+    delay(50);
+    noTone(CW_TONE);
+
     printLine2((char *)"--- SETTINGS ---");
   }
 
@@ -906,7 +953,7 @@ void set_tune_range() {
     printLine2(c);
   }
 
-  shiftBase(); //set the current knob position to the current frequency
+  shiftBase(); //align the current knob position with the current frequency
 }
 
 void set_CWoffset() {
@@ -922,6 +969,11 @@ void set_CWoffset() {
     noTone(CW_TONE);
     mode = MODE_NORMAL;
     delay(700);
+
+    tone(CW_TONE, 600);
+    delay(50);
+    noTone(CW_TONE);
+
     printLine2((char *)"--- SETTINGS ---");
   }
 
@@ -935,7 +987,7 @@ void set_CWoffset() {
     printLine2(c);
   }
 
-  shiftBase(); //set the current knob position to the current frequency
+  shiftBase(); //align the current knob position with the current frequency
 }
 
 // function to read the position of the tuning knob
@@ -1121,7 +1173,7 @@ void save_frequency() {
 */
 void setup() {
   raduino_version = 11;
-  strcpy (c, "Raduino v1.10   ");
+  strcpy (c, "Raduino v1.11   ");
 
   lcd.begin(16, 2);
   printBuff[0] = 0;
@@ -1129,7 +1181,7 @@ void setup() {
   // Start serial and initialize the Si5351
   Serial.begin(9600);
   analogReference(DEFAULT);
-  Serial.println("*Raduino booting up");
+  //Serial.println("*Raduino booting up");
 
   //configure the morse key input to use the internal pull-up
   pinMode(KEY, INPUT_PULLUP);
@@ -1226,16 +1278,16 @@ void setup() {
 
   //initialize the SI5351 and apply the correction factor
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 25000000L, cal);
-  Serial.println("*Initiliazed Si5351\n");
+  //Serial.println("*Initiliazed Si5351\n");
   si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
   si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
-  Serial.println("*Fixed PLL\n");
+  //Serial.println("*Fixed PLL\n");
   si5351.output_enable(SI5351_CLK0, 0);
   si5351.output_enable(SI5351_CLK1, 0);
   si5351.output_enable(SI5351_CLK2, 1);
-  Serial.println("*Output enabled PLL\n");
+  //Serial.println("*Output enabled PLL\n");
   si5351.set_freq(500000000L , SI5351_CLK2);
-  Serial.println("*Si5350 ON\n");
+  //Serial.println("*Si5350 ON\n");
   mode = MODE_NORMAL;
 
   if (vfoActive == VFO_A) {
@@ -1252,7 +1304,7 @@ void setup() {
   else
     setLSB();
 
-  shiftBase(); //set the current knob position to the current frequency
+  shiftBase(); //align the current knob position with the current frequency
 
   //If no FButton is installed, and you still want to use custom tuning range settings,
   //uncomment the following line and adapt the value as desired:
@@ -1299,7 +1351,8 @@ void loop() {
   }
 
   checkCW();
-  checkTX();
+  if (PTTsense_installed == 1)
+    checkTX();
   save_frequency();
   checkButton();
   if (!(digitalRead(PTT_SENSE) == 1 && PTTsense_installed == 1)) // tuning is disabled during TX (only when PTT sense line is installed)
