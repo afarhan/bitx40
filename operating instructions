@@ -6,6 +6,7 @@ Before updating note down your cal values etc. After the update use the Function
 10-TURN TUNING POT
 The default tuning range with the standard supplied 1-turn tuning pot is only 50 kHz.
 If you install a 10-turn pot instead you can extend the tuning range for full 40m band coverage.
+https://github.com/amunters/bitx40/blob/master/Vishay%20100K%2C%2010-turn%20pot%20wire%20up.jpg
 Using the Function Button, go to the SETTINGS menu and set the desired tuning range.
 
 Don't have a Function Button yet?
