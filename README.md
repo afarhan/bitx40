@@ -13,6 +13,10 @@ Operating instructions: https://github.com/amunters/bitx40/blob/master/operating
 
 Revision record
 
+v1.11
+- added menu beeps (needs CW sidetone to be wired up)
+- corrected a minor bug that "TX" is always shown when PTT-SENSE line has not been installed
+
 v1.10
 - added CW functionality (for straight morse key). This function can also be used just for tuning up.
   This requires the CW-CARRIER line connected to Raduino output D6 (connector P3, pin 15).
