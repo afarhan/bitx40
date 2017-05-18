@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.11
+User instructions for Raduino_v1.12
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -13,7 +13,10 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
 Calibration can still be done in the old fashioned way using the CAL button (pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1312 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1293 and adapting the value to your needs.
+
+PIN LAYOUT
+https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.jpg
 
 PTT SENSE WIRING:
 Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
@@ -61,9 +64,9 @@ In normal operation mode:
 1 short press - toggle VFO A/B
 2 short presses - toggle RIT on/off (PTT sense is required for this function)
 3 short presses - toggle LSB/USB mode
-long press (> 2 seconds) - VFO A=B
+long press (> 1 second) - VFO A=B
 
-When you press the Fbutton VERY long (>5 seconds) you will enter the SETTINGS menu.
+When you press the Fbutton VERY long (>3 seconds) you will enter the SETTINGS menu.
 In the SETTINGS menu:
 
 1 short press - VFO frequency calibration in LSB mode
@@ -120,7 +123,7 @@ In the SETTINGS menu:
  - using the tuning pot set the desired sidetone pitch
  - press the FB again to save the setting
  
-long press (>2 seconds) - return to the NORMAL mode
+long press (>1 second) - return to the NORMAL mode
 
 All user settings are stored in EEPROM and retrieved during startup.
 
