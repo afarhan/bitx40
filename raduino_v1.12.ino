@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.11 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.12 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -27,17 +27,26 @@
 #include <EEPROM.h>
 
 /**
+    The Wire.h library is used to talk to the Si5351 and we also declare an instance of
+    Si5351 object to control the clocks.
+*/
+#include <Wire.h>
+
+/**
     The main chip which generates upto three oscillators of various frequencies in the
     Raduino is the Si5351a. To learn more about Si5351a you can download the datasheet
     from www.silabs.com although, strictly speaking it is not a requirment to understand this code.
     Instead, you can look up the Si5351 library written by Jason Mildrum, NT7S. You can download and
     install it from https://github.com/etherkit/Si5351Arduino to complile this file.
-    NOTE: This sketch is based on version V2 of the Si5351 library. It will not compile with V1!
 
-    The Wire.h library is used to talk to the Si5351 and we also declare an instance of
-    Si5351 object to control the clocks.
+    NOTE 1: This sketch is based on version V2 of the Si5351 library. It will not compile with V1!
+
+    NOTE 2: Although all V2 versions of the Si5351 library will technically work, it is recommended to
+    use v2.0.1 although this is not the very latest version. It has been noticed that newer versions produce
+    strong clicks during tuning. That issue is still under investigation. Please use v2.0.1 until this
+    is resolved. Download v1.0.2 from https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
 */
-#include <Wire.h>
+
 #include <si5351.h> // https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
 Si5351 si5351;
 /**
@@ -85,7 +94,7 @@ int count = 0;
    The pins are assigned as follows:
           A0,   A1,  A2,  A3,   GND,   +5V,  A6,  A7
        pin 8     7    6    5     4       3    2    1 (connector P1)
-        BLACK BROWN RED ORANGE YELLW  GREEN  BLUEVIOLET
+        BLACK BROWN RED ORANGE YELLW  GREEN  BLUE VIOLET
         (while holding the board up so that back of the board faces you)
 
    Though, this can be assigned anyway, for this application of the Arduino, we will make the following
@@ -109,17 +118,18 @@ int count = 0;
 #define FBUTTON (A3)
 #define ANALOG_TUNING (A7)
 
-byte PTTsense_installed; //whether or not the PTT sense line is installed
+byte PTTsense_installed; //whether or not the PTT sense line is installed (automatically set during startup)
 
 /**
-    The second set of 16 pins on the bottom connector are have the three clock outputs and the digital lines to control the rig.
+    The second set of 16 pins on the bottom connector P3 have the three clock outputs and the digital lines to control the rig.
     This assignment is as follows :
-      Pin   1   2    3    4    5    6    7    8    9    10   11   12   13   14   15   16
+      Pin   1   2    3    4    5    6    7    8    9    10   11   12   13   14   15   16  (connector P3)
            +5V +5V CLK0  GND  GND  CLK1 GND  GND  CLK2  GND  D2   D3   D4   D5   D6   D7
     These too are flexible with what you may do with them, for the Raduino, we use them to :
-    - TX_RX line : Switches between Transmit and Receive when morse key is used
-    - CW_CARRIER line : turns on the carrier for CW
-    - CW_TONE : Side tone output
+
+    output D5 - CW_TONE : Side tone output
+    output D6 - CW_CARRIER line : turns on the carrier for CW
+    output D7 - TX_RX line : Switches between Transmit and Receive in CW mode
 */
 
 #define CW_TONE (5)
@@ -188,13 +198,13 @@ unsigned long baseTune = 7100000UL; // frequency (Hz) when tuning pot is at mini
 unsigned long bfo_freq = 11998000UL;
 int old_knob = 0;
 
-unsigned long CW_OFFSET; // the amount of carrier offset (Hz), equal to sidetone frequency
+unsigned long CW_OFFSET; // the amount of carrier offset (Hz) when transmitting CW, equal to sidetone frequency
 unsigned long CWoffset = 0;
 
 #define LOWEST_FREQ  (6995000L) // absolute minimum frequency (Hz)
 #define HIGHEST_FREQ (7500000L) //  absolute maximum frequency (Hz)
 
-unsigned long frequency;
+unsigned long frequency; // the 'dial' frequency as shown on the display
 
 /**
    The raduino has multiple modes:
@@ -282,6 +292,15 @@ void updateDisplay() {
   printLine1(c);
 }
 
+// function to generate a bleep sound (FB menu)
+void bleep(int pitch, int duration, int repeat) {
+  for (int i = 0; i < repeat; i++) {
+    tone(CW_TONE, pitch);
+    delay(duration);
+    noTone(CW_TONE);
+    delay(duration);
+  }
+}
 
 bool calbutton_prev = HIGH;
 long cal;
@@ -309,9 +328,7 @@ void calibrate() {
 
   if (mode != MODE_CALIBRATE) {
     setLSB();
-
-    //fetch the current correction factor from EEPROM
-    EEPROM.get(0, cal_old);
+    cal_old = cal;
     vfo = bfo_freq - frequency;
     vfo = (vfo + 5000L) / 10000L;
 
@@ -334,11 +351,7 @@ void calibrate() {
     //Write the 4 bytes of the correction factor into the eeprom memory.
     EEPROM.put(0, cal);
     delay(700);
-
-    tone(CW_TONE, 600);
-    delay(50);
-    noTone(CW_TONE);
-
+    bleep(600, 50, 2);
     printLine2((char *)"--- SETTINGS ---");
 
     shiftBase(); //align the current knob position with the current frequency
@@ -387,15 +400,14 @@ void calibrate() {
    We store the USBoffset in the EEPROM and read it in setup() when the Radiuno is powered up
 */
 
-void USBoffset() {
+int shift, current_setting;
 
-  static int USB_OFFSET_old, shift;
+void USBoffset() {
 
   if (mode != MODE_USBOFFSET) {
     setUSB();
-    //fetch the current USB offset value from EEPROM
-    EEPROM.get(4, USB_OFFSET_old);
-    shift = USB_OFFSET_old - (analogRead(ANALOG_TUNING) * 10) + 5000;
+    current_setting = USB_OFFSET;
+    shift = current_setting - (analogRead(ANALOG_TUNING) * 10) + 5000;
   }
 
   // The tuning knob gives readings from 0 to 1000
@@ -410,11 +422,7 @@ void USBoffset() {
     //Write the 2 bytes of the USB offset into the eeprom memory.
     EEPROM.put(4, USB_OFFSET);
     delay(700);
-
-    tone(CW_TONE, 600);
-    delay(50);
-    noTone(CW_TONE);
-
+    bleep(600, 50, 2);
     printLine2((char *)"--- SETTINGS ---");
 
     shiftBase(); //align the current knob position with the current frequency
@@ -461,12 +469,10 @@ void USBoffset() {
 
 void setFrequency(unsigned long f) {
 
-  if (isUSB) {
+  if (isUSB)
     si5351.set_freq((bfo_freq + f - USB_OFFSET + CWoffset) * 100ULL, SI5351_CLK2);
-  }
-  else {
+  else
     si5351.set_freq((bfo_freq - f + CWoffset) * 100ULL, SI5351_CLK2);
-  }
   frequency = f;
 }
 
@@ -537,9 +543,8 @@ void checkCW() {
   if (keyDown == 0 && digitalRead(KEY) == LOW) {
     //switch to transmit mode if we are not already in it
     if (inTx == 0) {
-      if (ritOn) { // when RIT is on, swap the VFO's
+      if (ritOn) // when RIT is on, swap the VFO's
         swapVFOs();
-      }
       CWoffset = CW_OFFSET;
       setFrequency(frequency);
       digitalWrite(TX_RX, 1); // activate the PTT switch - go in transmit mode
@@ -554,9 +559,8 @@ void checkCW() {
   }
 
   //reset the timer as long as the key is down
-  if (keyDown == 1) {
+  if (keyDown == 1)
     cwTimeout = CW_TIMEOUT + millis();
-  }
 
   //if we have a keyup
   if (keyDown == 1 && digitalRead(KEY) == HIGH) {
@@ -574,9 +578,8 @@ void checkCW() {
     setFrequency(frequency);
     inTx = 0;
     cwTimeout = 0; // reset the CW timeout counter
-    if (ritOn) { // when RIT is on, swap the VFO's
+    if (ritOn) // when RIT is on, swap the VFO's
       swapVFOs();
-    }
     updateDisplay();
   }
 }
@@ -594,11 +597,11 @@ int btnDown() {
 /**
    The Function Button is used for several functions
    NORMAL menu (normal operation):
-   1 short press (<0.5 sec): swap VFO A/B
+   1 short press: swap VFO A/B
    2 short presses: toggle RIT on/off
    3 short presses: toggle LSB/USB
-   long press (>2 Sec): VFO A=B
-   VERY long press (>5 sec): go to SETTINGS menu
+   long press (>1 Sec): VFO A=B
+   VERY long press (>3 sec): go to SETTINGS menu
    SETTINGS menu:
    1 short press: LSB calibration
    2 short presses: USB calibration
@@ -613,51 +616,24 @@ void checkButton() {
   static int clicks, action;
   static long t1, t2;
   static byte pressed = 0;
-  static byte SETTINGSmenu = 0; // whether or not we are in the SETTINGS menu
 
   if (!btnDown()) {
     t2 = millis() - t1; //time elapsed since last button press
-    if (pressed == 1) {
-      if (!SETTINGSmenu && t2 > 5000) { // detect VERY long press to go to SETTINGS menu
-        tone(CW_TONE, 600);
-        delay(150);
-        tone(CW_TONE, 1200);
-        delay(250);
-        noTone(CW_TONE);
-        SETTINGSmenu = 1;
-        printLine2((char *)"--- SETTINGS ---");
-        clicks = 10;
-      }
-      else if (!SETTINGSmenu && t2 > 1200) { //detect long press to reset the VFO's
-        tone(CW_TONE, 600);
-        delay(250);
-        noTone(CW_TONE);
+    if (pressed == 1)
+      if (clicks < 10 && t2 > 600 && t2 < 3000) { //detect long press to reset the VFO's
+        bleep(600, 50, 1);
         resetVFOs();
         delay(700);
         printLine2((char *)"                ");
         clicks = 0;
       }
-      else if (SETTINGSmenu && t2 > 1200) { //detect long press to exit the SETTINGS menu
-        tone(CW_TONE, 1200);
-        delay(150);
-        tone(CW_TONE, 600);
-        delay(250);
-        noTone(CW_TONE);
-        SETTINGSmenu = 0;
-        clicks = 0;
-        printLine2((char *)" --- NORMAL --- ");
-        delay(700);
-        printLine2((char *)"                ");
-      }
-    }
+
     if (t2 > 500) { // max time between button clicks (ms)
       action = clicks;
-      if (SETTINGSmenu) {
+      if (clicks >= 10)
         clicks = 10;
-      }
-      else {
+      else
         clicks = 0;
-      }
     }
     pressed = 0;
   }
@@ -668,17 +644,13 @@ void checkButton() {
       if (pressed == 0) {
         pressed = 1;
         t1 = millis();
-        tone(CW_TONE, 1200);
-        delay(50);
-        noTone(CW_TONE);
+        bleep(1200, 50, 1);
         action = 0;
         clicks++;
-        if (clicks > 16) {
+        if (clicks > 16)
           clicks = 11;
-        }
-        if (clicks > 3 && clicks < 10) {
+        if (clicks > 3 && clicks < 10)
           clicks = 1;
-        }
         switch (clicks) {
           //Normal menu options
           case 1:
@@ -712,15 +684,25 @@ void checkButton() {
             break;
         }
       }
-      else if ((millis() - t1) > 600)
+      else if ((millis() - t1) > 600 && (millis() - t1) < 800 && clicks < 10)
+        printLine2((char *)"Reset VFO's     ");
+      if ((millis() - t1) > 3000 && clicks < 10) {
+        bleep(1200, 150, 3);
+        printLine2((char *)"--- SETTINGS ---");
+        clicks = 10;
+      }
+      else if ((millis() - t1) > 1500 && clicks > 10) {
+        bleep(1200, 150, 3);
+        clicks = -1;
+        pressed = 0;
+        printLine2((char *)" --- NORMAL --- ");
+        delay(700);
         printLine2((char *)"                ");
+      }
     }
   }
-  if (action != 0 && action != 10) {
-    tone(CW_TONE, 600);
-    delay(50);
-    noTone(CW_TONE);
-  }
+  if (action != 0 && action != 10)
+    bleep(600, 50, 1);
   switch (action) {
     // Normal menu options
     case 1:
@@ -770,23 +752,19 @@ void swapVFOs() {
     vfoActive = VFO_A;
     vfoB = frequency;
     frequency = vfoA;
-    if (mode_A) {
+    if (mode_A)
       setUSB();
-    }
-    else {
+    else
       setLSB();
-    }
   }
   else {
     vfoActive = VFO_B;
     vfoA = frequency;
     frequency = vfoB;
-    if (mode_B) {
+    if (mode_B)
       setUSB();
-    }
-    else {
+    else
       setLSB();
-    }
   }
 
   shiftBase(); //align the current knob position with the current frequency
@@ -857,28 +835,26 @@ void resetVFOs() {
   printLine2((char *)"VFO A=B !       ");
   vfoA = vfoB = frequency;
   mode_A = mode_B = isUSB;
+  updateDisplay();
+  bleep(600, 50, 1);
   EEPROM.put(24, mode_A);
   EEPROM.put(25, mode_B);
-  updateDisplay();
-  return;
 }
 
 void VFOdrive() {
   static int drive;
-  static int drive_old;
-  static int shift;
 
   if (mode != MODE_DRIVELEVEL) {
     if (isUSB)
-      drive_old = USBdrive / 2 - 1;
+      current_setting = USBdrive / 2 - 1;
     else
-      drive_old = LSBdrive / 2 - 1;
+      current_setting = LSBdrive / 2 - 1;
 
     shift = analogRead(ANALOG_TUNING);
   }
 
   //generate drive level values 2,4,6,8 from tuning pot
-  drive = 2 * (((int((analogRead(ANALOG_TUNING) - shift) / 50) + drive_old) & 3) + 1);
+  drive = 2 * ((((analogRead(ANALOG_TUNING) - shift) / 50 + current_setting) & 3) + 1);
 
   // if Fbutton is pressed again, we save the setting
 
@@ -897,11 +873,7 @@ void VFOdrive() {
       EEPROM.put(6, drive);
     }
     delay(700);
-
-    tone(CW_TONE, 600);
-    delay(50);
-    noTone(CW_TONE);
-
+    bleep(600, 50, 2);
     printLine2((char *)"--- SETTINGS ---");
 
     shiftBase(); //align the current knob position with the current frequency
@@ -920,14 +892,23 @@ void VFOdrive() {
   }
 }
 
-/* this function allows the user to set the tuning range dependinn on the type of potentiometer
+/* this function allows the user to set the tuning range depending on the type of potentiometer
   for a standard 1-turn pot, a range of 50 KHz is recommended
   for a 10-turn pot, a tuning range of 200 kHz is recommended
 */
 void set_tune_range() {
 
-  //generate values 10-520 from the tuning pot
-  TUNING_RANGE = 10 + 10 * int(analogRead(ANALOG_TUNING) / 20);
+  if (mode != MODE_TUNERANGE) {
+    current_setting = TUNING_RANGE;
+    shift = current_setting - 10 * analogRead(ANALOG_TUNING) / 20;
+  }
+
+  //generate values 10-500 from the tuning pot
+  TUNING_RANGE = constrain(10 * analogRead(ANALOG_TUNING) / 20 + shift, 10, 500);
+  if (analogRead(ANALOG_TUNING) < 5 && TUNING_RANGE > 10)
+    shift = shift - 10;
+  if (analogRead(ANALOG_TUNING) > 1020 && TUNING_RANGE < 500)
+    shift = shift + 10;
 
   // if Fbutton is pressed again, we save the setting
   if (digitalRead(FBUTTON) == LOW) {
@@ -936,11 +917,7 @@ void set_tune_range() {
     printLine2((char *)"Tune range set! ");
     mode = MODE_NORMAL;
     delay(700);
-
-    tone(CW_TONE, 600);
-    delay(50);
-    noTone(CW_TONE);
-
+    bleep(600, 50, 2);
     printLine2((char *)"--- SETTINGS ---");
   }
 
@@ -958,28 +935,34 @@ void set_tune_range() {
 
 void set_CWoffset() {
 
+  if (mode != MODE_CWOFFSET) {
+    current_setting = CW_OFFSET;
+    shift = current_setting - map(analogRead(ANALOG_TUNING), 0, 1024, 400, 1200);
+  }
+
   //generate values 400-1200 from the tuning pot
-  CW_OFFSET = map(analogRead(ANALOG_TUNING), 0, 1024, 400, 1200);
+  CW_OFFSET = constrain(map(analogRead(ANALOG_TUNING), 0, 1024, 400, 1200) + shift, 400, 1200);
+  if (analogRead(ANALOG_TUNING) < 5 && TUNING_RANGE > 10)
+    shift = shift - 10;
+  if (analogRead(ANALOG_TUNING) > 1020 && TUNING_RANGE < 500)
+    shift = shift + 10;
 
   // if Fbutton is pressed again, we save the setting
   if (digitalRead(FBUTTON) == LOW) {
     //Write the 4 bytes of the CW offset into the eeprom memory.
     EEPROM.put(12, CW_OFFSET);
     printLine2((char *)"Sidetone  set!  ");
-    noTone(CW_TONE);
     mode = MODE_NORMAL;
     delay(700);
-
-    tone(CW_TONE, 600);
-    delay(50);
-    noTone(CW_TONE);
-
+    bleep(600, 50, 2);
     printLine2((char *)"--- SETTINGS ---");
   }
 
   else {
     mode = MODE_CWOFFSET;
-    tone(CW_TONE, CW_OFFSET);
+    //tone(CW_TONE, CW_OFFSET);
+    bleep(CW_OFFSET, 50, 3);
+    bleep(CW_OFFSET, 150, 1);
     itoa(CW_OFFSET, b, DEC);
     strcpy(c, "sidetone ");
     strcat(c, b);
@@ -1049,11 +1032,11 @@ void shiftBase() {
    The tuning potentiometer that a voltage between 0 and 5 volts at ANALOG_TUNING pin of the control connector.
    This is read as a value between 0 and 1000. By 100x oversampling ths range is expanded by a factor 10.
    Hence, the tuning pot gives you 10,000 steps from one end to the other end of its rotation. Each step is 50 Hz,
-   thus giving maximum 500 Khz of tuning range. The tuning range is scaled down depending on the limit settings.
+   thus giving maximum 500 Khz of tuning range. The tuning range is scaled down depending on the TUNING_RANGE value.
    The standard tuning range (for the standard 1-turn pot) is 50 Khz. But it is also possible to use a 10-turn pot
-   to tune accross the entire 40m band. In that case you need to change the values for TUNING_RANGE and baseTune.
+   to tune accross the entire 40m band. The desired TUNING_RANGE can be set via the Function Button in the SETTINGS menu.
    When the potentiometer is moved to either end of the range, the frequency starts automatically moving
-   up or down in 10 Khz increments
+   up or down in 10 Khz increments, so it is still possible to tune beyond the range set by TUNING_RANGE.
 */
 
 void doTuning() {
@@ -1152,9 +1135,8 @@ void save_frequency() {
       t3 = millis();
     }
   }
-  else {
+  else
     t3 = millis();
-  }
   diffA = vfoA - old_vfoA;
   if (abs(diffA) > 500UL)
     old_vfoA = vfoA;
@@ -1173,7 +1155,7 @@ void save_frequency() {
 */
 void setup() {
   raduino_version = 11;
-  strcpy (c, "Raduino v1.11   ");
+  strcpy (c, "Raduino v1.12   ");
 
   lcd.begin(16, 2);
   printBuff[0] = 0;
@@ -1228,9 +1210,8 @@ void setup() {
   delay(10);
 
   //display warning message when calibration data was erased
-  if ((cal == 0) && (USB_OFFSET == 1500)) {
+  if ((cal == 0) && (USB_OFFSET == 1500))
     printLine2((char *)"uncalibrated!");
-  }
 
   EEPROM.get(6, LSBdrive);
   //Serial.println(LSBdrive);
@@ -1312,6 +1293,9 @@ void setup() {
   //TUNING_RANGE = 50;    // tuning range (in kHz) of the tuning pot
 
   //recommended tuning range for a 1-turn pot: 50kHz, for a 10-turn pot: 200kHz
+
+  bleep(CW_OFFSET, 60, 3);
+  bleep(CW_OFFSET, 180, 1);
 }
 
 void loop() {
