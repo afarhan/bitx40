@@ -13,6 +13,10 @@ Operating instructions: https://github.com/amunters/bitx40/blob/master/operating
 
 Revision record
 
+v1.12
+- improved responsiveness of Function Button for better user experience
+- corrected Tuning Range and SideTone setting procedures
+
 v1.11
 - added menu beeps (needs CW sidetone to be wired up)
 - corrected a minor bug that "TX" is always shown when PTT-SENSE line has not been installed
