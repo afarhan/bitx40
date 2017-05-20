@@ -124,7 +124,7 @@ byte PTTsense_installed; //whether or not the PTT sense line is installed (autom
     The second set of 16 pins on the bottom connector P3 have the three clock outputs and the digital lines to control the rig.
     This assignment is as follows :
       Pin   1   2    3    4    5    6    7    8    9    10   11   12   13   14   15   16  (connector P3)
-           +5V +5V CLK0  GND  GND  CLK1 GND  GND  CLK2  GND  D2   D3   D4   D5   D6   D7
+           +5V +5V CLK2  GND  GND  CLK1 GND  GND  CLK0  GND  D2   D3   D4   D5   D6   D7
     These too are flexible with what you may do with them, for the Raduino, we use them to :
 
     output D5 - CW_TONE : Side tone output
