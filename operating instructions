@@ -26,6 +26,13 @@ When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see 
 The PTT SENSE is only required for the RIT (SPLIT) functionality, and for disabling frequency updating during TX
 (to prevent "FM-ing"). If you don't install the PTT sense everything else will still work normally.
 
+CONNECTING A MORSE KEY or 'TUNE' BUTTON:
+A morse key (or electronic keyer) can be connected to Raduino pin A1 (brown wire).
+When the key is up (open) pin A1 will be HIGH.
+When the key is down (closed, shorted to ground) pin A1 will be LOW.
+You could also wire up a simple push button instead of connecting a morse key. The generated CW carrier can be used for
+tuning up your antenna.
+
 CW-CARRIER WIRING:
 Connect a wire from Raduino ouput D6 (connector P3, pin 15), via a 47K series resistor, to the input of the mixer.
 See https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png
