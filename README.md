@@ -4,7 +4,7 @@ BITX40 sketch for Raduino
 Important:
 This sketch is confirmed working OK with the si5351 library v2.01.
 Older library version definitely don't work (compilation errors).
-Recently released versions v2.02 and v2.03 compile OK but give strong pops/clicks in the speaker during tuning.
+Newer versions (v2.02, v2.03, v2.04) compile OK but give strong pops/clicks in the speaker during tuning.
 This issue is still under investigation. See https://github.com/etherkit/Si5351Arduino/issues/44
 # Until this is solved, please use v2.01 of the si5351 library.
 The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
