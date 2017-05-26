@@ -73,6 +73,7 @@ In normal operation mode:
 1 short press - toggle VFO A/B
 2 short presses - toggle RIT on/off (PTT sense is required for this function)
 3 short presses - toggle LSB/USB mode
+4 short presses - start frequency SCAN mode
 long press (> 1 second) - VFO A=B
 
 When you press the Fbutton VERY long (>3 seconds) you will enter the SETTINGS menu.
