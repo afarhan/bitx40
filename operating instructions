@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.12
+User instructions for Raduino_v1.13
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -13,7 +13,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
 Calibration can still be done in the old fashioned way using the CAL button (pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1293 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1556 and adapting the value to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.jpg
@@ -38,6 +38,8 @@ Connect a wire from Raduino ouput D6 (connector P3, pin 15), via a 47K series re
 See https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png
 When the key is down ouput D6 will be HIGH. This injects some DC current into the mixer so that it becomes unbalanced.
 As a result a CW carrier will be generated.
+Note: If the carrier is not generated at full output power, you may need to reduce the 47K series resistor to a lower value
+for more drive. However try to keep it as high as possible to keep a clean CW signal. Never use a resistor less than 1K!
 The CW-CARRIER is only required for CW functionality. If you don't install this line everything else
 will still work normally.
 
@@ -84,7 +86,7 @@ In the SETTINGS menu:
     (the received signal may not yet be zero beat at this point)
   - go into the LSB calibration mode (1 short press)
   - using the tuning pot, adjust the LSB offset for exactly zero beat
-  - press the Function Botton again to save the setting
+  - press the Function Button again to save the setting
   
 2 short presses - VFO frequency calibration in USB mode
 
@@ -95,11 +97,11 @@ In the SETTINGS menu:
     (the received signal may not yet be zero beat at this point)
   - go into the USB calibration mode (2 short presses)
   - using the tuning pot, adjust the USB offset for exactly zero beat
-  - press the Function Botton again to save the setting
+  - press the Function Button again to save the setting
   
 3 short presses - set VFO drive level in LSB mode
 
-  - tune to 7199 kHz, on most BITX40 transceivers a strong birdie is heard
+  - tune to 7199 kHz, on most BITX40 transceivers a strong birdie is heard in LSB mode
   - give 3 short presses to the FB to enter the VFO drive level adjustment
   - the default drive level in LSB mode is 4mA
   - using the tuning pot, try different drive levels (2,4,6,8 mA) to minimize the strength of the birdie
@@ -113,8 +115,8 @@ In the SETTINGS menu:
   - using the tuning pot, try different drive levels (2,4,6,8 mA) for maximum signal to noise ratio
   - press the FB again to save the setting
   Extra Note: If the max. drive level of 8mA is still insufficient for USB mode, removal of C91 and C92 may help.
-  These caps cause too much attenuation of the VFO signal at higher frequencies. They're only needed for the analog VFO
-  and can safely be removed if you use the Raduino instead of the analog VFO.
+  These caps attenuate the VFO signal at higher frequencies. They're actually only needed for the analog VFO
+  and can safely be removed if you use the Raduino DDS instead of the analog VFO.
 
 5 short presses - set tuning range
 
@@ -124,11 +126,24 @@ In the SETTINGS menu:
   - recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
   - press the FB again to save the setting
 
-6 short presses - set sidetone pitch
+6 short presses - set CW paramaters (sidetone pitch, CW timeout)
 
  - the sidetone is generated
- - using the tuning pot set the desired sidetone pitch
- - press the FB again to save the setting
+ - using the tuning pot, set the desired sidetone pitch
+ - press the FB
+ - using the tuning pot, set the desired timeout value (ms)
+ - press the FB again to save the settings
+ 
+7 short presses - set frequency SCAN parameters
+
+ - using the tuning pot, set the desired lower frequency scan limit
+ - press the FB
+ - using the tuning pot, set the desired upper frequency scan limit
+ - press the FB
+ - using the tuning pot, set the desired lower scan step size
+ - press the FB
+ - using the tuning pot, set the desired lower scan step delay
+ - press the FB again to save the settings
  
 long press (>1 second) - return to the NORMAL mode
 
