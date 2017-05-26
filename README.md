@@ -13,6 +13,12 @@ Operating instructions: https://github.com/amunters/bitx40/blob/master/operating
 
 Revision record
 
+v1.13
+- added frequency scanning capability
+- added functionality so that the user can set the CW timout value
+- added decimal point on the VFO display for better readability, like so: 7.123.4 LSB
+- simplified calibration routine and cleaned up the code to preserve memory space 
+
 v1.12
 - improved responsiveness of Function Button for better user experience
 - corrected Tuning Range and SideTone setting procedures
