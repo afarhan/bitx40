@@ -1,6 +1,9 @@
 # bitx40
 BITX40 sketch for Raduino
 
+This sketch is intended as universal, standard Raduino software that should always work, even on a unmodified out-of-the-box BITX40 + raduino board. Without any hardware modifications the sketch provides the standard basic LSB functionality.
+The sketch provides additional features such as USB, CW, RIT/SPLIT etc., but these will only become functional when the related (minimal) hardware mods are made. See the operating and modification instructions at https://github.com/amunters/bitx40/blob/master/operating%20instructions for full details.
+
 Important:
 This sketch is confirmed working OK with the si5351 library v2.01.
 Older library versions v1.xx definitely don't work (compilation errors).
@@ -9,7 +12,6 @@ This issue is still under investigation. See https://github.com/etherkit/Si5351A
 # Until this is solved, please use v2.01 of the si5351 library.
 The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
 
-Operating instructions: https://github.com/amunters/bitx40/blob/master/operating%20instructions
 
 Revision record
 
