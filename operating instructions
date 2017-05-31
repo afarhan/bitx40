@@ -16,7 +16,7 @@ Calibration can still be done in the old fashioned way using the CAL button (pin
 The tuning range setting can be 'hard coded' by uncommenting line 1556 and adapting the value to your needs.
 
 PIN LAYOUT
-https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.jpg
+https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
 
 PTT SENSE WIRING:
 Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
