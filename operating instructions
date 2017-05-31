@@ -12,14 +12,14 @@ Using the Function Button, go to the SETTINGS menu and set the desired tuning ra
 Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
-Calibration can still be done in the old fashioned way using the CAL button (pin A2 - red wire).
+Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
 The tuning range setting can be 'hard coded' by uncommenting line 1556 and adapting the value to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
 
 PTT SENSE WIRING:
-Connect pin A0 (black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
+Connect pin A0 (connector P1, black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
 See https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
@@ -27,9 +27,9 @@ The PTT SENSE is only required for the RIT (SPLIT) functionality, and for disabl
 (to prevent "FM-ing"). If you don't install the PTT sense everything else will still work normally.
 
 CONNECTING A MORSE KEY or 'TUNE' BUTTON:
-A morse key (or electronic keyer) can be connected to Raduino pin A1 (brown wire).
+A morse key (or electronic keyer) can be connected to Raduino pin A1 (connector P1, brown wire).
 When the key is up (open) pin A1 will be HIGH.
-When the key is down (closed, shorted to ground) pin A1 will be LOW.
+When the key is down (closed, shorted to ground) pin A1 will be LOW, and a carrier will be transmitted.
 You could also wire up a simple push button instead of connecting a morse key. The generated CW carrier can be used for
 tuning up your antenna. In that case please note that you will be transmitting a carrier at full duty cycle, therefore don't
 keep the tune button pressed for too long to prevent overheating the final!
@@ -54,7 +54,8 @@ will still work normally.
 
 TX-RX WIRING:
 See https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png
-When the key is down output D7 will be HIGH. It will only go LOW again when the key has been up for at least 250 ms.
+When the key is down output D7 (connector P3, pin 15) will be HIGH. It will only go LOW again when the key has been up for at
+least 350 ms (this timeout value can be changed via the SETTINGS menu).
 This signal is used to drive an NPN transistor which is connected in parallel to the existing PTT switch, so that it will
 bypass the PTT switch during CW operation. As as result the relays will be activated as long as D7 is HIGH.
 (Suggestion: If you have a combined microphone/PTT connector, the PTT bypass transistor can be soldered directly on the
@@ -64,7 +65,7 @@ still possible but you will need to manually press the PTT switch to transmit.
 (The PTT bypass transistor may be used in the future for VOX functionality as well).
 
 FUNCTION BUTTON WIRING:
-Connect a momentary pushbutton between pin A3 (orange wire) and ground.
+Connect a momentary pushbutton between pin A3 (connector P1, orange wire) and ground.
 Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
 
 FUNCTION BUTTON USAGE:
