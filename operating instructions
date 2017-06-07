@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.13
+User instructions for Raduino_v1.14
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -76,6 +76,7 @@ In normal operation mode:
 2 short presses - toggle RIT on/off (PTT sense is required for this function)
 3 short presses - toggle LSB/USB mode
 4 short presses - start frequency SCAN mode
+5 short presses - start VFO A/B monitoring mode
 long press (> 1 second) - VFO A=B
 
 When you press the Fbutton VERY long (>3 seconds) you will enter the SETTINGS menu.
@@ -143,9 +144,9 @@ In the SETTINGS menu:
  - press the FB
  - using the tuning pot, set the desired upper frequency scan limit
  - press the FB
- - using the tuning pot, set the desired lower scan step size
+ - using the tuning pot, set the desired scan step size
  - press the FB
- - using the tuning pot, set the desired lower scan step delay
+ - using the tuning pot, set the desired scan step delay (also used for A/B monitoring mode)
  - press the FB again to save the settings
  
 long press (>1 second) - return to the NORMAL mode
