@@ -15,6 +15,14 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.14
+- added VFO A/B monitoring mode (press Function Button 5 times)
+- use RX-offset instead of TX-offset in CW mode - the display now shows the correct TX frequency in CW
+- changed the way to switch from CW to SSB mode: press PTT to return to SSB mode (tks Willy W1LY)
+- restored the functionality for old way calibration method
+- simplified the method for sidetone setting: hold key down to hear sidetone
+- improved the display during "fast scan" at tuning pot limits (tks Paul KC8WBK)
+
 v1.13
 - added frequency scanning capability
 - added functionality so that the user can set the CW timout value via the SETTINGS menu
