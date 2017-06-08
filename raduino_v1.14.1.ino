@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.14 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.14.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -633,6 +633,7 @@ byte param;
    long press: exit SETTINGS menu - go back to NORMAL menu
 */
 char clicks;
+bool clr = false;
 void checkButton() {
 
   static byte action;
@@ -647,6 +648,7 @@ void checkButton() {
         resetVFOs();
         delay(700);
         clicks = 0;
+        clr = false;
       }
 
     if (t2 > 500) { // max time between button clicks (ms)
@@ -732,8 +734,10 @@ void checkButton() {
       }
     }
   }
-  if (action != 0 && action != 10)
+  if (action != 0 && action != 10) {
     bleep(600, 50, 1);
+    clr = false;
+  }
   switch (action) {
     // NORMAL menu
 
@@ -1309,8 +1313,10 @@ void doTuning() {
     baseTune = baseTune - 10000L;
     frequency = baseTune + (knob * TUNING_RANGE / 10L);
     setFrequency(frequency);
-    if (clicks < 10)
+    if (clicks < 10) {
       printLine2((char *)"<<<<<<<         "); // tks Paul KC8WBK
+      clr = false;
+    }
     delay(300);
   }
 
@@ -1319,15 +1325,15 @@ void doTuning() {
     baseTune = baseTune + 10000L;
     frequency = baseTune + (knob * TUNING_RANGE / 10L);
     setFrequency(frequency);
-    if (clicks < 10)
+    if (clicks < 10) {
       printLine2((char *)"         >>>>>>>"); // tks Paul KC8WBK
+      clr = false;
+    }
     delay(300);
   }
 
   // the tuning knob is at neither extremities, tune the signals as usual ("flutter fix" tks Jerry KE7ER)
   else {
-    if (RUNmode == RUN_NORMAL && clicks == 0)
-      printLine2((char *)"                ");
     if (knob != old_knob) {
       static byte dir_knob;
       if ( (knob > old_knob) && ((dir_knob == 1) || ((knob - old_knob) > 5)) ||
@@ -1438,7 +1444,7 @@ void scan() {
 */
 void setup() {
   raduino_version = 15;
-  strcpy (c, "Raduino v1.14   ");
+  strcpy (c, "Raduino v1.14.1 ");
 
   lcd.begin(16, 2);
   printBuff[0] = 0;
@@ -1560,6 +1566,10 @@ void loop() {
         printLine2((char *)"to zerobeat.    ");
         delay(2000);
         return;
+      }
+      if (clicks == 0 && !clr) {
+        printLine2((char *)"                ");
+        clr = true;
       }
       break;
     case 1: //LSB calibration
