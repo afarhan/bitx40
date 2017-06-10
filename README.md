@@ -15,6 +15,9 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.14.1
+- Corrected small bug in v1.14 that caused slight ticking noise when the radio was left idle.
+
 v1.14
 - added VFO A/B monitoring mode (press Function Button 5 times)
 - use RX-offset instead of TX-offset in CW mode - the display now shows the correct TX frequency in CW
