@@ -23,7 +23,7 @@ Connect pin A0 (connector P1, black wire) via a 10K resistor to the output of U3
 See https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
-The PTT SENSE is only required for the RIT (SPLIT) functionality, and for disabling frequency updating during TX
+The PTT SENSE is only required for the CW, RIT (SPLIT) functionality, and for disabling frequency updating during TX
 (to prevent "FM-ing"). If you don't install the PTT sense everything else will still work normally.
 
 CONNECTING A MORSE KEY or 'TUNE' BUTTON:
@@ -60,8 +60,6 @@ This signal is used to drive an NPN transistor which is connected in parallel to
 bypass the PTT switch during CW operation. As as result the relays will be activated as long as D7 is HIGH.
 (Suggestion: If you have a combined microphone/PTT connector, the PTT bypass transistor can be soldered directly on the
 back of it).
-The TX-RX is currently only required for CW semi break-in functionality. If you don't install this line CW operation is
-still possible but you will need to manually press the PTT switch to transmit.
 (The PTT bypass transistor may be used in the future for VOX functionality as well).
 
 FUNCTION BUTTON WIRING:
