@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.14.1
+User instructions for Raduino_v1.15
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -13,7 +13,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT and USB capability then).
 Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1550 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1625 and adapting the value to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
@@ -23,7 +23,7 @@ Connect pin A0 (connector P1, black wire) via a 10K resistor to the output of U3
 See https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
-The PTT SENSE is only required for the CW, RIT (SPLIT) functionality, and for disabling frequency updating during TX
+The PTT SENSE is only required for the CW, RIT, SPLIT functionality, and for disabling frequency updating during TX
 (to prevent "FM-ing"). If you don't install the PTT sense everything else will still work normally.
 
 CONNECTING A MORSE KEY or 'TUNE' BUTTON:
@@ -71,10 +71,11 @@ FUNCTION BUTTON USAGE:
 Several functions are available with just one pushbutton.
 In normal operation mode:
 1 short press - toggle VFO A/B
-2 short presses - toggle RIT on/off (PTT sense is required for this function)
-3 short presses - toggle LSB/USB mode
-4 short presses - start frequency SCAN mode
-5 short presses - start VFO A/B monitoring mode
+2 short presses - RIT on (PTT sense is required for this function) (press FB again to switch RIT off)
+3 short presses - toggle SPLIT on/off (PTT sense is required for this function)
+4 short presses - switch mode (rotate through LSB-USB-CWL-CWU)
+5 short presses - start frequency SCAN mode
+6 short presses - start VFO A/B monitoring mode
 long press (> 1 second) - VFO A=B
 
 When you press the Fbutton VERY long (>3 seconds) you will enter the SETTINGS menu.
