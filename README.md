@@ -15,6 +15,13 @@ The si5351 library v2.01 can be downloaded from https://github.com/etherkit/Si53
 
 Revision record
 
+v1.15
+- Added true RIT functionality (adjustable RX offset while TX frequency remains fixed) (2 Function Button presses)
+- The old 'RIT' function, based on switching between VFOs A/B, is now called "SPLIT" (3 presses)
+- Mode selection (4 presses) now rotates between LSB-USB-CWL-CWU
+- Major code cleanup to reduce memory usage
+- Inserted some delay in various routines to prevent annoying buzzing sound in SETTINGS menu
+
 v1.14.1
 - Corrected small bug in v1.14 that caused slight ticking noise when the radio was left idle.
 
