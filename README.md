@@ -9,6 +9,7 @@ This sketch is confirmed working OK with the si5351 library v2.0.5.
 Older library versions v1.xx definitely don't work (compilation errors).
 Later versions (v2.02, v2.03, v2.04) compile OK but give strong pops/clicks in the speaker during tuning.
 The latest version 2.0.5 works OK with less tuning clicks.
+The SI5351 library can be downloaded from https://github.com/etherkit/Si5351Arduino
 
 
 Revision record
