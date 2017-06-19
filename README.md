@@ -11,8 +11,7 @@ Later versions (v2.02, v2.03, v2.04) compile OK but give strong pops/clicks in t
 The latest version 2.0.5 works OK with less tuning clicks.
 The SI5351 library can be downloaded from https://github.com/etherkit/Si5351Arduino
 
-
-[![Donate](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PTAMBM6QT8LP8)
+I develop and maintain ham radio software as a hobby and distribute it for free. However, if you like this software, please consider to give a small donation to a home for kids with autism: [![Donate](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PTAMBM6QT8LP8)
 
 Revision record
 
