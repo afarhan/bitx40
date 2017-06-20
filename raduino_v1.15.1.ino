@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.15 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.15.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -572,7 +572,7 @@ void checkCW() {
         EEPROM.put(25, mode_B);
       }
 
-      RXshift = 0;
+      RXshift = RIT = RIT_old = 0;
       setFrequency(frequency);
       shiftBase();
     }
@@ -1518,7 +1518,7 @@ void scan() {
 */
 void setup() {
   raduino_version = 16;
-  strcpy (c, "Raduino v1.15");
+  strcpy (c, "Raduino v1.15.1");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
