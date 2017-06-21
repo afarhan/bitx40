@@ -17,6 +17,10 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.15.1
+- RIT offset should only be applied during RX. Due to a small bug the RIT offset was not turned off during transmitting CW.
+  (RIT in SSB was OK). This has been corrected - RIT works correctly now in all modes.
+
 v1.15
 - Added true RIT functionality (adjustable RX offset while TX frequency remains fixed) (2 Function Button presses)
 - The old 'RIT' function, based on switching between VFOs A/B, is now called "SPLIT" (3 presses)
