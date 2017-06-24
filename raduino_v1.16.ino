@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.15.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.16 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -41,13 +41,11 @@
 
     NOTE 1: This sketch is based on version V2 of the Si5351 library. It will not compile with V1!
 
-    NOTE 2: Although all V2 versions of the Si5351 library will technically work, it is recommended to
-    use v2.0.1 although this is not the very latest version. It has been noticed that newer versions produce
-    strong clicks during tuning. That issue is still under investigation. Please use v2.0.1 until this
-    is resolved. Download v1.0.2 from https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
+    NOTE 2: SI5351 library version 2.0.5 has been confirmed OK. Earlier versions compile OK but may produce
+    strong "tuning clicks" (clicks each time the frequency is updated).
 */
 
-#include <si5351.h> // https://github.com/etherkit/Si5351Arduino/releases/tag/v2.0.1
+#include <si5351.h>
 Si5351 si5351;
 /**
    The Raduino board is the size of a standard 16x2 LCD panel. It has three connectors:
@@ -126,11 +124,13 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
          +12V +12V CLK2  GND  GND CLK1  GND  GND  CLK0  GND  D2   D3   D4   D5   D6   D7
     These too are flexible with what you may do with them, for the Raduino, we use them to :
 
+    input D4  - SPOT : is connected to a push button that can momentarily ground this line. When the SPOT button is pressed a sidetone will be generated for zero beat tuning.
     output D5 - CW_TONE : Side tone output
     output D6 - CW_CARRIER line : turns on the carrier for CW
     output D7 - TX_RX line : Switches between Transmit and Receive in CW mode
 */
 
+#define SPOT (4)
 #define CW_TONE (5)
 #define CW_CARRIER (6)
 #define TX_RX (7)
@@ -487,7 +487,7 @@ void checkTX() {
   if (digitalRead(PTT_SENSE) && !inTx) {
     // go in transmit mode
     inTx = true;
-    RXshift = RIT = RIT_old = 0;
+    RXshift = RIT = RIT_old = 0; // no frequency offset during TX
 
     mode = mode & B11111101; // leave CW mode, return to SSB mode
 
@@ -572,7 +572,7 @@ void checkCW() {
         EEPROM.put(25, mode_B);
       }
 
-      RXshift = RIT = RIT_old = 0;
+      RXshift = RIT = RIT_old = 0; // no frequency offset during TX
       setFrequency(frequency);
       shiftBase();
     }
@@ -588,12 +588,14 @@ void checkCW() {
     TimeOut = millis() + CW_TIMEOUT;
   }
 
-  //if we are in cw-mode and have a keyup for a "longish" time (CW_TIMEOUT value in ms)
+  // if we are in cw-mode and have a keyup for a "longish" time (CW_TIMEOUT value in ms)
+  // then go back to RX
+  
   if (TimeOut > 0 && inTx && TimeOut < millis()) {
 
     inTx = false;
     TimeOut = 0; // reset the CW timeout counter
-    RXshift = CW_OFFSET;
+    RXshift = CW_OFFSET; // apply the frequency offset in RX
     setFrequency(frequency);
     shiftBase();
 
@@ -609,7 +611,7 @@ void checkCW() {
     digitalWrite(CW_CARRIER, 1); // generate carrier
     tone(CW_TONE, CW_OFFSET); // generate sidetone
   }
-  else {
+  else if (digitalRead(SPOT) == HIGH) {
     digitalWrite(CW_CARRIER, 0); // stop generating the carrier
     noTone(CW_TONE); // stop generating the sidetone
   }
@@ -671,7 +673,7 @@ void checkButton() {
     if (!digitalRead(FBUTTON)) {
       // button was really pressed, not just some noise
       if (ritOn) {
-        toggleRIT();
+        toggleRIT(); // disable the RIT when it was on and the FB is pressed again
         bleep(600, 50, 1);
         delay(700);
         return;
@@ -738,8 +740,6 @@ void checkButton() {
         bleep(1200, 150, 3);
         printLine2((char *)"--- SETTINGS ---");
         clicks = 10;
-        if (ritOn) //disable RIT if is was on
-          toggleRIT();
       }
 
       else if ((millis() - t1) > 1500 && clicks > 10) { // long press: return to the NORMAL menu
@@ -1433,6 +1433,22 @@ void doTuning() {
   delay(50);
 }
 
+/**
+   "CW SPOT" function: When operating CW it is important that both stations transmit their carriers on the same frequency.
+   When the SPOT button is pressed while the radio is in RX mode, the RIT will be turned off and the sidetone will be generated (but no carrier will be transmitted).
+   Tune the VFO so that the pitch of the received CW signal is equal to the pitch of the CW Spot tone. By aligning the CW Spot tone to match the pitch of an incoming
+   station's signal, you will cause your signal and the other station's signal to be exactly on the same frequency.
+*/
+void checkSPOT() {
+  if (digitalRead(SPOT) == LOW) {
+    if (ritOn) // disable the RIT if it was on
+      toggleRIT();
+    tone(CW_TONE, CW_OFFSET); // generate sidetone
+    delay(10);
+  }
+}
+
+
 byte raduino_version; //version identifier
 
 void factory_settings() {
@@ -1518,7 +1534,7 @@ void scan() {
 */
 void setup() {
   raduino_version = 16;
-  strcpy (c, "Raduino v1.15.1");
+  strcpy (c, "Raduino v1.16");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
@@ -1537,6 +1553,9 @@ void setup() {
   pinMode(PTT_SENSE, INPUT_PULLUP);
   //configure the CAL button to use the internal pull-up
   pinMode(CAL_BUTTON, INPUT_PULLUP);
+  //configure the SPOT button to use the internal pull-up
+  pinMode(SPOT, INPUT_PULLUP);
+
 
   pinMode(TX_RX, OUTPUT);
   digitalWrite(TX_RX, 0);
@@ -1642,6 +1661,8 @@ void loop() {
         delay(2000);
       }
       else {
+        if (!inTx)
+          checkSPOT();
         if (clicks == 0 && !ritOn && !inTx)
           printLine2((char *)" ");
         if (PTTsense_installed) {
