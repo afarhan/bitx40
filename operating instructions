@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.15.1
+User instructions for Raduino_v1.16
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -61,6 +61,15 @@ bypass the PTT switch during CW operation. As as result the relays will be activ
 (Suggestion: If you have a combined microphone/PTT connector, the PTT bypass transistor can be soldered directly on the
 back of it).
 (The PTT bypass transistor may be used in the future for VOX functionality as well).
+
+CW SPOT Button:
+Connect a momentary pushbutton between pin D4 (connector P3) and ground.
+Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
+When operating CW it is important that both stations transmit their carriers on the same frequency.
+When the SPOT button is pressed while the radio is in RX mode, the RIT will be turned off and the sidetone will be generated
+(but no carrier will be transmitted). Tune the VFO so that the pitch of the received CW signal is equal to the pitch of the
+CW Spot tone. By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and
+the other station's signal to be exactly on the same frequency (zero beat).
 
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (connector P1, orange wire) and ground.
