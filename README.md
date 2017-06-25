@@ -19,7 +19,7 @@ Revision record
 
 v1.16
 - Added CW SPOT TONE button for exact zero beating.
-  Connect a pushbutton to Arduino pin D5. A SPOT tone will be heard when D5 is connected to ground.
+  Connect a pushbutton to Arduino pin D4. A SPOT tone will be heard when D4 is connected to ground.
   By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and the
   other station's signal to be exactly on the same frequency (zero beat).
 
