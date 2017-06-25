@@ -11,7 +11,7 @@ Using the Function Button, go to the SETTINGS menu and set the desired tuning ra
 
 Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
-(of course you will miss the dual VFO, RIT and USB capability then).
+(of course you will miss the dual VFO, RIT, SPLIT, USB and CW capability then).
 Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
 The tuning range setting can be 'hard coded' by uncommenting line 1644 and adapting the value to your needs.
 
@@ -23,8 +23,8 @@ Connect pin A0 (connector P1, black wire) via a 10K resistor to the output of U3
 See https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
-The PTT SENSE is only required for the CW, RIT, SPLIT functionality, and for disabling frequency updating during TX
-(to prevent "FM-ing"). If you don't install the PTT sense everything else will still work normally.
+The PTT SENSE is required for the CW, RIT, SPLIT functionality, and for disabling frequency updating during TX
+(to prevent "FM-ing"). If you don't install the PTT sense, LSB and USB operation will still work normally.
 
 CONNECTING A MORSE KEY or 'TUNE' BUTTON:
 A morse key (or electronic keyer) can be connected to Raduino pin A1 (connector P1, brown wire).
@@ -35,6 +35,7 @@ tuning up your antenna. In that case please note that you will be transmitting a
 keep the tune button pressed for too long to prevent overheating the final!
 
 CW-CARRIER WIRING:
+This is required for CW operation.
 Connect a wire from Raduino ouput D6 (connector P3, pin 15), via a 10K series resistor, to the input of the mixer.
 See https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png
 When the key is down ouput D6 will be HIGH. This injects some DC current into the mixer so that it becomes unbalanced.
@@ -54,6 +55,7 @@ will still work normally.
 
 TX-RX WIRING:
 See https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png
+This is required for CW operation.
 When the key is down output D7 (connector P3, pin 15) will be HIGH. It will only go LOW again when the key has been up for at
 least 350 ms (this timeout value can be changed via the SETTINGS menu).
 This signal is used to drive an NPN transistor which is connected in parallel to the existing PTT switch, so that it will
@@ -70,6 +72,8 @@ When the SPOT button is pressed while the radio is in RX mode, the RIT will be t
 (but no carrier will be transmitted). Tune the VFO so that the pitch of the received CW signal is equal to the pitch of the
 CW Spot tone. By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and
 the other station's signal to be exactly on the same frequency (zero beat).
+(The SPOT button is just an extra tuning aid and is not strictly required for CW - if you don't install it, CW operation is
+still possible)
 
 FUNCTION BUTTON WIRING:
 Connect a momentary pushbutton between pin A3 (connector P1, orange wire) and ground.
