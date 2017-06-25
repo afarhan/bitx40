@@ -17,6 +17,12 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.16
+- Added CW SPOT TONE button for exact zero beating.
+  Connect a pushbutton to Arduino pin D5. A SPOT tone will be heard when D5 is connected to ground.
+  By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and the
+  other station's signal to be exactly on the same frequency (zero beat).
+
 v1.15.1
 - RIT offset should only be applied during RX. Due to a small bug the RIT offset was not turned off during transmitting CW.
   (RIT in SSB was OK). This has been corrected - RIT works correctly now in all modes.
