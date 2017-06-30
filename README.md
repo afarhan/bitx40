@@ -17,6 +17,10 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.17.1
+- corrected a bug in v1.17 in the shiftBase() routine that the radio didn't return to the correct frequency after switching 
+  VFO's, RIT, SPLIT, FINE TUNE etc.
+
 v1.17
 - Added "Fine Tune" capability to SPOT button
   While the SPOT button is held pressed, the radio will temporarily go into "FINE TUNE" mode, allowing the VFO to be set at 1Hz 
