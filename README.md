@@ -17,6 +17,11 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.17
+- Added "Fine Tune" capability to SPOT button
+  While the SPOT button is held pressed, the radio will temporarily go into "FINE TUNE" mode, allowing the VFO to be set at 1Hz 
+  precision. This feature works also in SSB mode (except that no sidetone will be generated then).
+
 v1.16
 - Added CW SPOT TONE button for exact zero beating.
   Connect a pushbutton to Arduino pin D4. A SPOT tone will be heard when D4 is connected to ground.
