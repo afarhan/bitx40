@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.17 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.17.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -1357,7 +1357,7 @@ void doRIT() {
 void shiftBase() {
   setFrequency(frequency);
   unsigned long knob = knob_position(); // get the current tuning knob position
-  baseTune - frequency - (knob * (unsigned long)TUNING_RANGE / 10UL);
+  baseTune = frequency - (knob * (unsigned long)TUNING_RANGE / 10UL);
 }
 
 /**
@@ -1599,7 +1599,7 @@ void scan() {
 */
 void setup() {
   raduino_version = 17;
-  strcpy (c, "Raduino v1.17");
+  strcpy (c, "Raduino v1.17.1");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
