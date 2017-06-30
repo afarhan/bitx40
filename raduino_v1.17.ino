@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.16 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.17 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -232,10 +232,11 @@ int CW_OFFSET; // the amount of offset (Hz) during RX, equal to sidetone frequen
 int RXshift = 0; // the actual frequency shift that is applied during RX depending on the operation mode
 
 
-#define LOWEST_FREQ  (6995000L) // absolute minimum frequency (Hz)
-#define HIGHEST_FREQ (7500000L) //  absolute maximum frequency (Hz)
+#define LOWEST_FREQ  (6990000UL) // absolute minimum frequency (Hz)
+#define HIGHEST_FREQ (7500000UL) //  absolute maximum frequency (Hz)
 
 unsigned long frequency; // the 'dial' frequency as shown on the display
+int fine = 0; // fine tune offset (Hz)
 
 /**
    The raduino has multiple RUN-modes:
@@ -248,6 +249,7 @@ unsigned long frequency; // the 'dial' frequency as shown on the display
 #define RUN_SCAN (5) // frequency scanning mode
 #define RUN_SCAN_PARAMS (6) // set scan parameters
 #define RUN_MONITOR (7) // frequency scanning mode
+#define RUN_FINETUNING (8) // fine tuning mode
 
 byte RUNmode = RUN_NORMAL;
 
@@ -292,7 +294,7 @@ void updateDisplay() {
   memset(c, 0, sizeof(c));
   memset(b, 0, sizeof(b));
 
-  ltoa(frequency, b, DEC);
+  ultoa(frequency, b, DEC);
 
   if (!vfoActive) // VFO A is active
     strcpy(c, "A ");
@@ -464,9 +466,9 @@ void calibrate() {
 void setFrequency(unsigned long f) {
 
   if (mode & 1) // if we are in UPPER side band mode
-    si5351.set_freq((bfo_freq + f + cal * 19 / 5 - USB_OFFSET - RXshift - RIT) * 100ULL, SI5351_CLK2);
+    si5351.set_freq((bfo_freq + f + cal * 19 / 5 - USB_OFFSET - RXshift - RIT - fine) * 100ULL, SI5351_CLK2);
   else // if we are in LOWER side band mode
-    si5351.set_freq((bfo_freq - f + cal - RXshift - RIT) * 100ULL, SI5351_CLK2);
+    si5351.set_freq((bfo_freq - f + cal - RXshift - RIT - fine) * 100ULL, SI5351_CLK2);
   updateDisplay();
 }
 
@@ -590,7 +592,7 @@ void checkCW() {
 
   // if we are in cw-mode and have a keyup for a "longish" time (CW_TIMEOUT value in ms)
   // then go back to RX
-  
+
   if (TimeOut > 0 && inTx && TimeOut < millis()) {
 
     inTx = false;
@@ -674,8 +676,9 @@ void checkButton() {
       // button was really pressed, not just some noise
       if (ritOn) {
         toggleRIT(); // disable the RIT when it was on and the FB is pressed again
+        old_knob = knob_position();
         bleep(600, 50, 1);
-        delay(700);
+        delay(100);
         return;
       }
       if (!pressed) {
@@ -1272,16 +1275,16 @@ void scan_params() {
 
 // function to read the position of the tuning knob at high precision (Allard, PE1NWL)
 int knob_position() {
-  long knob = 0;
+  unsigned long knob = 0;
   // the knob value normally ranges from 0 through 1023 (10 bit ADC)
   // in order to increase the precision by a factor 10, we need 10^2 = 100x oversampling
 
   for (byte i = 0; i < 100; i++) {
-    knob = knob + analogRead(ANALOG_TUNING) - 10; // take 100 readings from the ADC
+    knob = knob + analogRead(ANALOG_TUNING); // take 100 readings from the ADC
   }
   knob = (knob + 5L) / 10L; // take the average of the 100 readings and multiply the result by 10
-  //now the knob value ranges from -100 through 10130 (10x more precision)
-  return knob;
+  //now the knob value ranges from 0 through 10230 (10x more precision)
+  return (int)knob;
 }
 
 /* Many BITX40's suffer from a strong birdie at 7199 kHz (LSB).
@@ -1315,19 +1318,18 @@ void doRIT() {
 
   if (firstrun) {
     current_setting = RIToffset;
-    shift = current_setting - ((knob - 5000) / 10 * 5);
+    shift = current_setting - ((knob - 5000) / 2);
     firstrun = false;
   }
 
-  //generate values -5000 ~ +5000 from the tuning pot
-  RIToffset = (knob - 5000) / 10 * 5 + shift;
-  if (knob < 0 && RIToffset > -2500)
+  //generate values -2500 ~ +2500 from the tuning pot
+  RIToffset = (knob - 5000) / 2 + shift;
+  if (knob < 5 && RIToffset > -2500)
     shift = shift - 50;
-  else if (knob > 10000 && RIToffset < 2500)
+  else if (knob > 10220 && RIToffset < 2500)
     shift = shift + 50;
 
   RIT = RIToffset;
-
   if (RIT != RIT_old)
     setFrequency(frequency);
 
@@ -1336,9 +1338,10 @@ void doRIT() {
   strcat(c, b);
   strcat(c, " Hz");
   printLine2(c);
-  delay(100);
+  delay(20);
   RIT_old = RIT;
-  old_knob = knob;
+  old_knob = knob_position();
+  delay(10);
 }
 
 
@@ -1353,14 +1356,14 @@ void doRIT() {
 
 void shiftBase() {
   setFrequency(frequency);
-  long knob = knob_position(); // get the current tuning knob position
-  baseTune = frequency - (knob * TUNING_RANGE / 10L);
+  unsigned long knob = knob_position(); // get the current tuning knob position
+  baseTune - frequency - (knob * (unsigned long)TUNING_RANGE / 10UL);
 }
 
 /**
    The Tuning mechansim of the Raduino works in a very innovative way. It uses a tuning potentiometer.
    The tuning potentiometer that a voltage between 0 and 5 volts at ANALOG_TUNING pin of the control connector.
-   This is read as a value between 0 and 1000. By 100x oversampling ths range is expanded by a factor 10.
+   This is read as a value between 0 and 1000. By 100x oversampling this range is expanded by a factor 10.
    Hence, the tuning pot gives you 10,000 steps from one end to the other end of its rotation. Each step is 50 Hz,
    thus giving maximum 500 Khz of tuning range. The tuning range is scaled down depending on the TUNING_RANGE value.
    The standard tuning range (for the standard 1-turn pot) is 50 Khz. But it is also possible to use a 10-turn pot
@@ -1374,7 +1377,7 @@ void doTuning() {
   int knob = knob_position(); // get the current tuning knob position
 
   // tuning is disabled during TX (only when PTT sense line is installed)
-  if (inTx && (abs(knob - old_knob) > 6)) {
+  if (inTx && (abs(knob - old_knob) > 10)) {
     printLine2((char *)"dial is locked");
     shiftBase();
     firstrun = true;
@@ -1384,9 +1387,9 @@ void doTuning() {
     return;
 
   // the knob is fully on the low end, move down by 10 Khz and wait for 300 msec
-  if (knob < -80 && frequency > LOWEST_FREQ) {
-    baseTune = baseTune - 10000L;
-    frequency = baseTune + (long(knob) * TUNING_RANGE / 10L);
+  if (knob < 20 && frequency > LOWEST_FREQ) {
+    baseTune = baseTune - 10000UL;
+    frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
     setFrequency(frequency);
     if (clicks < 10) {
       printLine2((char *)"<<<<<<<"); // tks Paul KC8WBK
@@ -1395,9 +1398,9 @@ void doTuning() {
   }
 
   // the knob is full on the high end, move up by 10 Khz and wait for 300 msec
-  else if (knob > 10120L && frequency < HIGHEST_FREQ) {
-    baseTune = baseTune + 10000L;
-    frequency = baseTune + (long(knob) * TUNING_RANGE / 10L);
+  else if (knob > 10220 && frequency < HIGHEST_FREQ) {
+    baseTune = baseTune + 10000UL;
+    frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
     setFrequency(frequency);
     if (clicks < 10) {
       printLine2((char *)"         >>>>>>>"); // tks Paul KC8WBK
@@ -1409,17 +1412,16 @@ void doTuning() {
   else {
     if (knob != old_knob) {
       static byte dir_knob;
-      if ( (knob > old_knob) && ((dir_knob == 1) || ((knob - old_knob) > 5)) ||
-           (knob < old_knob) && ((dir_knob == 0) || ((old_knob - knob) > 5)) ) {
+      if ( (knob > old_knob) && ((dir_knob == 1) || ((knob - old_knob) > 5)) || (knob < old_knob) && ((dir_knob == 0) || ((old_knob - knob) > 5)) ) {
         if (knob > old_knob) {
           dir_knob = 1;
-          frequency = baseTune + (long(knob + 5) * TUNING_RANGE / 10L);
+          frequency = baseTune + ((unsigned long)knob + 5UL) * (unsigned long)TUNING_RANGE / 10UL;
         }
         else {
           dir_knob = 0;
-          frequency = baseTune + (long(knob) * TUNING_RANGE / 10L);
+          frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
         }
-        old_knob = knob;
+        old_knob = knob_position();
         setFrequency(frequency);
       }
     }
@@ -1435,16 +1437,61 @@ void doTuning() {
 
 /**
    "CW SPOT" function: When operating CW it is important that both stations transmit their carriers on the same frequency.
-   When the SPOT button is pressed while the radio is in RX mode, the RIT will be turned off and the sidetone will be generated (but no carrier will be transmitted).
-   Tune the VFO so that the pitch of the received CW signal is equal to the pitch of the CW Spot tone. By aligning the CW Spot tone to match the pitch of an incoming
-   station's signal, you will cause your signal and the other station's signal to be exactly on the same frequency.
+   When the SPOT button is pressed while the radio is in CW mode, the RIT will be turned off and the sidetone will be generated (but no carrier will be transmitted).
+   The FINETUNE mode is then also enabled (fine tuning +/- 1000Hz). Fine tune the VFO so that the pitch of the received CW signal is equal to the pitch of the CW Spot tone.
+   By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and the other station's signal to be exactly on the same frequency.
+
+   When the SPOT button is pressed while the radio is in SSB mode, the radio will only be put in FINETUNE mode (no sidetone will be generated).
 */
 void checkSPOT() {
   if (digitalRead(SPOT) == LOW) {
-    if (ritOn) // disable the RIT if it was on
-      toggleRIT();
-    tone(CW_TONE, CW_OFFSET); // generate sidetone
-    delay(10);
+    RUNmode = RUN_FINETUNING;
+    if (mode & 2) // if we are in CW mode
+      tone(CW_TONE, CW_OFFSET); // generate sidetone
+    if (ritOn) {
+      toggleRIT(); // disable the RIT when it was on
+      old_knob = knob_position();
+    }
+  }
+}
+
+void finetune() {
+  int knob = knob_position(); // get the current tuning knob position
+  static int fine_old;
+
+  if (digitalRead(SPOT) == LOW) {
+    if (firstrun) {
+      firstrun = false;
+      fine = fine_old = 0;
+      shift = (5000 - knob) / 5;
+    }
+
+    //generate values -1000 ~ +1000 from the tuning pot
+    fine = (knob - 5000) / 5 + shift;
+    if (knob < 5 && fine > -1000)
+      shift = shift - 10;
+    else if (knob > 10220 && fine < 1000)
+      shift = shift + 10;
+
+    if (fine != fine_old)
+      setFrequency(frequency); // apply the finetuning offset
+
+    itoa(fine, b, DEC);
+    strcpy(c, "FINE ");
+    strcat(c, b);
+    strcat(c, " Hz");
+    printLine2(c);
+
+    fine_old = fine;
+  }
+  else { // return to normal mode when SPOT button is released
+    firstrun = true;
+    RUNmode = RUN_NORMAL;
+    frequency = frequency + fine; // apply the finetuning offset
+    fine = 0;
+    setFrequency(frequency);
+    shiftBase();
+    old_knob = knob_position();
   }
 }
 
@@ -1481,8 +1528,26 @@ void factory_settings() {
 void save_frequency() {
   static long t3;
   static unsigned long old_vfoA, old_vfoB;
-  if ((abs(vfoA - old_vfoA) < 500UL) && (abs(vfoB - old_vfoB) < 500UL)) {
-    if (millis() - t3 > 30000) {
+  unsigned long aDif, bDif; // tks Richard Blessing
+  if (vfoA >= old_vfoA)
+  {
+    aDif = vfoA - old_vfoA;
+  }
+  else
+  {
+    aDif = old_vfoA - vfoA;
+  }
+  if (vfoB >= old_vfoB)
+  {
+    bDif = vfoB - old_vfoB;
+  }
+  else
+  {
+    bDif = old_vfoB - vfoB;
+  }
+
+  if ((aDif < 500UL) && (bDif < 500UL)) {
+    if (millis() - t3 > 30000UL) {
       EEPROM.put(16, old_vfoA); // save VFO_A frequency
       EEPROM.put(20, old_vfoB); // save VFO_B frequency
       t3 = millis();
@@ -1490,9 +1555,9 @@ void save_frequency() {
   }
   else
     t3 = millis();
-  if (abs(vfoA - old_vfoA) > 500UL)
+  if (aDif > 500UL)
     old_vfoA = vfoA;
-  if (abs(vfoB - old_vfoB) > 500UL)
+  if (bDif > 500UL)
     old_vfoB = vfoB;
 }
 
@@ -1512,8 +1577,8 @@ void scan() {
     if (RUNmode == RUN_SCAN) {
       frequency = frequency + scan_step_freq; // change frequency
       // test for upper limit of scan
-      if (frequency > scan_stop_freq * 1000L)
-        frequency = scan_start_freq * 1000L;
+      if (frequency > scan_stop_freq * 1000UL)
+        frequency = scan_start_freq * 1000UL;
       setFrequency(frequency);
     }
     else // monitor mode
@@ -1533,8 +1598,8 @@ void scan() {
    Choose Serial Monitor from Arduino IDE's Tools menu to see the Serial.print messages
 */
 void setup() {
-  raduino_version = 16;
-  strcpy (c, "Raduino v1.16");
+  raduino_version = 17;
+  strcpy (c, "Raduino v1.17");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
@@ -1643,7 +1708,7 @@ void setup() {
 
   //TUNING_RANGE = 50;    // tuning range (in kHz) of the tuning pot
 
-  //recommended tuning range for a 1-turn pot: 50kHz, for a 10-turn pot: 200kHz
+  //recommended tuning range for a 1-turn pot: 50kHz, for a 10-turn pot: 100-200kHz
 
   bleep(CW_OFFSET, 60, 3);
   bleep(CW_OFFSET, 180, 1);
@@ -1698,6 +1763,9 @@ void loop() {
       break;
     case 7: // A/B monitor mode
       scan();
+      break;
+    case 8: // Fine tuning mode
+      finetune();
       break;
   }
   delay(100);
