@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.17.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.18 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -8,8 +8,8 @@
    Donald Knuth coined the term Literate Programming to indicate code that is written be
    easily read and understood.
 
-   The Raduino is a small board that includes the Arduin Nano, a 16x2 LCD display and
-   an Si5351a frequency synthesizer. This board is manufactured by Paradigm Ecomm Pvt Ltd
+   The Raduino is a small board that includes the Arduino Nano, a 16x2 LCD display and
+   an Si5351a frequency synthesizer. This board is manufactured by Paradigm Ecomm Pvt Ltd.
 
    To learn more about Arduino you may visit www.arduino.cc.
 
@@ -56,7 +56,7 @@ Si5351 si5351;
    talk to the Si5351 over I2C protocol.
 
     A0     A1   A2   A3    GND    +5V   A6   A7
-   BLACK BROWN RED ORANGE YELLOW GREEN BLUE VIOLET
+   BLACK BROWN RED ORANGE YELLOW GREEN BLUE VIOLET  (same color coding as used for resistors)
 
    Second is a 16 pin LCD connector. This connector is meant specifically for the standard 16x2
    LCD display in 4 bit mode. The 4 bit mode requires 4 data lines and two control lines to work:
@@ -137,10 +137,10 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
 
 /**
     The raduino has a number of timing parameters, all specified in milliseconds
-    CW_TIMEOUT : how many milliseconds between consecutive keyup and keydowns before switching back to receive?
+    QSK_DELAY : how many milliseconds between consecutive keyup and keydowns before switching back to receive?
 */
 
-int CW_TIMEOUT; // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs
+int QSK_DELAY; // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs
 
 /**
    The Raduino supports two VFOs : A and B and receiver incremental tuning (RIT).
@@ -201,6 +201,7 @@ byte mode = LSB; // mode of the currently active VFO
 bool inTx = false; // whether or not we are in transmit mode
 bool keyDown = false; // whether we have a key up or key down
 unsigned long TimeOut = 0;
+bool semiQSK; //whether we use semi QSK or manual PTT
 
 /** Tuning Mechanism of the Raduino
     We use a linear pot that has two ends connected to +5 and the ground. the middle wiper
@@ -231,9 +232,8 @@ int old_knob = 0;
 int CW_OFFSET; // the amount of offset (Hz) during RX, equal to sidetone frequency
 int RXshift = 0; // the actual frequency shift that is applied during RX depending on the operation mode
 
-
 #define LOWEST_FREQ  (6990000UL) // absolute minimum frequency (Hz)
-#define HIGHEST_FREQ (7500000UL) //  absolute maximum frequency (Hz)
+#define HIGHEST_FREQ (7310000UL) //  absolute maximum frequency (Hz)
 
 unsigned long frequency; // the 'dial' frequency as shown on the display
 int fine = 0; // fine tune offset (Hz)
@@ -294,7 +294,7 @@ void updateDisplay() {
   memset(c, 0, sizeof(c));
   memset(b, 0, sizeof(b));
 
-  ultoa(frequency, b, DEC);
+  ultoa((frequency + 50), b, DEC);
 
   if (!vfoActive) // VFO A is active
     strcpy(c, "A ");
@@ -437,7 +437,6 @@ void calibrate() {
   }
 }
 
-
 /**
    The setFrequency is a little tricky routine, it works differently for USB and LSB
    The BITX BFO is permanently set to lower sideband, (that is, the crystal frequency
@@ -466,7 +465,7 @@ void calibrate() {
 void setFrequency(unsigned long f) {
 
   if (mode & 1) // if we are in UPPER side band mode
-    si5351.set_freq((bfo_freq + f + cal * 19 / 5 - USB_OFFSET - RXshift - RIT - fine) * 100ULL, SI5351_CLK2);
+    si5351.set_freq((bfo_freq + f + cal * 19 / 5 - USB_OFFSET - RXshift + RIT + fine) * 100ULL, SI5351_CLK2);
   else // if we are in LOWER side band mode
     si5351.set_freq((bfo_freq - f + cal - RXshift - RIT - fine) * 100ULL, SI5351_CLK2);
   updateDisplay();
@@ -480,10 +479,10 @@ void setFrequency(unsigned long f) {
 */
 
 void checkTX() {
-  // We don't check for ptt when transmitting cw
+  // We don't check for ptt when transmitting cw in semi-QSK mode
   // as long as the TimeOut is non-zero, we will continue to hold the
   // radio in transmit mode
-  if (TimeOut > 0)
+  if (TimeOut > 0 && semiQSK)
     return;
 
   if (digitalRead(PTT_SENSE) && !inTx) {
@@ -491,15 +490,17 @@ void checkTX() {
     inTx = true;
     RXshift = RIT = RIT_old = 0; // no frequency offset during TX
 
-    mode = mode & B11111101; // leave CW mode, return to SSB mode
+    if (semiQSK) {
+      mode = mode & B11111101; // leave CW mode, return to SSB mode
 
-    if (!vfoActive) { // if VFO A is active
-      mode_A = mode;
-      EEPROM.put(24, mode_A);
-    }
-    else { // if VFO B is active
-      mode_B = mode;
-      EEPROM.put(25, mode_B);
+      if (!vfoActive) { // if VFO A is active
+        mode_A = mode;
+        EEPROM.put(24, mode_A);
+      }
+      else { // if VFO B is active
+        mode_B = mode;
+        EEPROM.put(25, mode_B);
+      }
     }
 
     setFrequency(frequency);
@@ -517,6 +518,11 @@ void checkTX() {
     updateDisplay();
     if (splitOn) { // when SPLIT was on, swap the VFOs back to original state
       swapVFOs();
+    }
+    if (mode & 2) { // if we are in CW mode
+      RXshift = CW_OFFSET; // apply the frequency offset in RX
+      setFrequency(frequency);
+      shiftBase();
     }
   }
 }
@@ -544,7 +550,7 @@ void checkTX() {
    In CW-U (USB) mode we must shift the TX frequency 800Hz up
    In CW-L (LSB) mode we must shift the TX frequency 800Hz down
 
-   The default offset (CW_OFFSET) is 800Hz, the default timeout (CW_TIMEOUT) is 350ms.
+   The default offset (CW_OFFSET) is 800Hz, the default timeout (QSK_DELAY) is 350ms.
    The user can change these in the SETTINGS menu.
 
 */
@@ -554,7 +560,7 @@ void checkCW() {
   if (!keyDown && !digitalRead(KEY)) {
     keyDown = true;
 
-    if (!inTx) {     //switch to transmit mode if we are not already in it
+    if (!inTx && semiQSK) {     //switch to transmit mode if we are not already in it
 
       digitalWrite(TX_RX, 1); // activate the PTT switch - go in transmit mode
       delay(5);  //give the relays a few ms to settle the T/R relays
@@ -582,18 +588,18 @@ void checkCW() {
 
   //keep resetting the timer as long as the key is down
   if (keyDown)
-    TimeOut = millis() + CW_TIMEOUT;
+    TimeOut = millis() + QSK_DELAY;
 
   //if the key goes up again after it's been down
   if (keyDown && digitalRead(KEY)) {
     keyDown = false;
-    TimeOut = millis() + CW_TIMEOUT;
+    TimeOut = millis() + QSK_DELAY;
   }
 
-  // if we are in cw-mode and have a keyup for a "longish" time (CW_TIMEOUT value in ms)
+  // if we are in semi-QSK mode and have a keyup for a "longish" time (QSK_DELAY value in ms)
   // then go back to RX
 
-  if (TimeOut > 0 && inTx && TimeOut < millis()) {
+  if (TimeOut > 0 && inTx && TimeOut < millis() && semiQSK) {
 
     inTx = false;
     TimeOut = 0; // reset the CW timeout counter
@@ -608,8 +614,7 @@ void checkCW() {
     delay(10);  //give the relays a few ms to settle the T/R relays
   }
 
-
-  if (keyDown) {
+  if (keyDown && mode & B00000010) {
     digitalWrite(CW_CARRIER, 1); // generate carrier
     tone(CW_TONE, CW_OFFSET); // generate sidetone
   }
@@ -639,7 +644,7 @@ byte param;
    3 short presses: Set VFO drive level in LSB mode
    4 short presses: Set VFO drive level in USB mode
    5 short presses: Set tuning range
-   6 short presses: Set the 2 CW parameters (sidetone pitch, CW timeout)
+   6 short presses: Set the 3 CW parameters (sidetone pitch, semi-QSK on/off, CW timeout)
    7 short presses: Set the 4 scan parameters (lower limit, upper limit, step size, step delay)
    long press: exit SETTINGS menu - go back to NORMAL menu
 */
@@ -861,10 +866,9 @@ void swapVFOs() {
     SetSideBand(LSBdrive);
 
   if (!inTx && mode > 1)
-    RXshift = CW_OFFSET;
+    RXshift = CW_OFFSET; // add RX shift when we are receiving in CW mode
   else
-    RXshift = 0;
-
+    RXshift = 0; // no RX shift when we are receiving in SSB mode
 
   shiftBase(); //align the current knob position with the current frequency
 }
@@ -886,7 +890,6 @@ void toggleRIT() {
   updateDisplay();
 }
 
-
 void toggleSPLIT() {
   if (!PTTsense_installed) {
     printLine2((char *)"Not available!");
@@ -903,7 +906,7 @@ void toggleSPLIT() {
 }
 
 void toggleMode() {
-  if (PTTsense_installed)
+  if (PTTsense_installed && !semiQSK)
     mode = (mode + 1) & 3; // rotate through LSB-USB-CWL-CWU
   else
     mode = (mode + 1) & 1; // switch between LSB and USB only (no CW)
@@ -932,7 +935,6 @@ void SetSideBand(byte drivelevel) {
     EEPROM.put(25, mode_B);
   }
 }
-
 
 // resetting the VFO's will set both VFO's to the current frequency and mode
 void resetVFOs() {
@@ -970,7 +972,7 @@ void VFOdrive() {
     if (mode & 1) { // if UPPER side band mode
       USBdrive = drive;
       //Write the 2 bytes of the USBdrive level into the eeprom memory.
-      EEPROM.put(8, drive);
+      EEPROM.put(7, drive);
     }
     else { // if LOWER side band mode
       LSBdrive = drive;
@@ -1042,52 +1044,86 @@ void set_tune_range() {
 void set_CWparams() {
 
   if (firstrun) {
-    if (param == 1) {
-      CW_TIMEOUT = 10; // during CW offset adjustment, temporarily set CW_TIMEOUT to minimum
-      current_setting = CW_OFFSET;
-      shift = current_setting - analogRead(ANALOG_TUNING) - 200;
-    }
-    else {
-      current_setting = CW_TIMEOUT;
-      shift = current_setting - 10 * (analogRead(ANALOG_TUNING) / 10);
+    switch (param) {
+      case 1:
+        mode = mode | 2; //switch to CW mode
+        updateDisplay();
+        RXshift = CW_OFFSET;
+        QSK_DELAY = 10; // during CW offset adjustment, temporarily set QSK_DELAY to minimum
+        current_setting = CW_OFFSET;
+        shift = current_setting - analogRead(ANALOG_TUNING) - 200;
+        break;
+      case 2:
+        current_setting = semiQSK;
+        shift = analogRead(ANALOG_TUNING);
+        break;
+      case 3:
+        current_setting = QSK_DELAY;
+        shift = current_setting - 10 * (analogRead(ANALOG_TUNING) / 10);
+        break;
     }
   }
 
-  if (param == 1) {
-    //generate values 500-1000 from the tuning pot
-    CW_OFFSET = constrain(analogRead(ANALOG_TUNING) + 200 + shift, 200, 1200);
-    if (analogRead(ANALOG_TUNING) < 5 && CW_OFFSET > 200)
-      shift = shift - 10;
-    else if (analogRead(ANALOG_TUNING) > 1020 && CW_OFFSET < 1200)
-      shift = shift + 10;
-  }
-  else {
-    //generate values 0-1000 from the tuning pot
-    CW_TIMEOUT = constrain(10 * ( analogRead(ANALOG_TUNING) / 10) + shift, 0, 1000);
-    if (analogRead(ANALOG_TUNING) < 5 && CW_TIMEOUT > 10)
-      shift = shift - 10;
-    else if (analogRead(ANALOG_TUNING) > 1020 && CW_TIMEOUT < 1000)
-      shift = shift + 10;
+  switch (param) {
+    case 1:
+      //generate values 500-1000 from the tuning pot
+      CW_OFFSET = constrain(analogRead(ANALOG_TUNING) + 200 + shift, 200, 1200);
+      if (analogRead(ANALOG_TUNING) < 5 && CW_OFFSET > 200)
+        shift = shift - 10;
+      else if (analogRead(ANALOG_TUNING) > 1020 && CW_OFFSET < 1200)
+        shift = shift + 10;
+      break;
+    case 2:
+      //generate values 0-1-0-1 from the tuning pot
+      semiQSK = ((((analogRead(ANALOG_TUNING) - shift) & 64) / 64) + current_setting) & 1;
+      break;
+    case 3:
+      //generate values 10-1000 from the tuning pot
+      QSK_DELAY = constrain(10 * ( analogRead(ANALOG_TUNING) / 10) + shift, 10, 1000);
+      if (analogRead(ANALOG_TUNING) < 5 && QSK_DELAY >= 20)
+        shift = shift - 10;
+      else if (analogRead(ANALOG_TUNING) > 1020 && QSK_DELAY < 1000)
+        shift = shift + 10;
+      break;
   }
 
   // if Fbutton is pressed again, we save the setting
   if (!digitalRead(FBUTTON)) {
-    if (param == 1) {
-      EEPROM.get(36, CW_TIMEOUT); // restore CW_TIMEOUT to original value
-      //Write the 2 bytes of the CW offset into the eeprom memory.
-      EEPROM.put(12, CW_OFFSET);
-      bleep(600, 50, 1);
-      delay(200);
-    }
-    else {
-      //Write the 2 bytes of the CW Timout into the eeprom memory.
-      EEPROM.put(36, CW_TIMEOUT);
-      printLine2((char *)"CW params set!");
-      RUNmode = RUN_NORMAL;
-      delay(700);
-      bleep(600, 50, 2);
-      printLine2((char *)"--- SETTINGS ---");
-      shiftBase(); //align the current knob position with the current frequency
+    switch (param) {
+      case 1:
+        EEPROM.get(36, QSK_DELAY); // restore QSK_DELAY to original value
+        //Write the 2 bytes of the CW offset into the eeprom memory.
+        EEPROM.put(12, CW_OFFSET);
+        bleep(600, 50, 1);
+        delay(200);
+        break;
+      case 2:
+        EEPROM.put(8, semiQSK);
+        if (semiQSK) {
+          bleep(600, 50, 1);
+          delay(200);
+        }
+        else {
+          QSK_DELAY = 10; // set CW timeout to minimum when manual PTT is selected
+          EEPROM.put(36, QSK_DELAY);
+          printLine2((char *)"CW params set!");
+          RUNmode = RUN_NORMAL;
+          delay(700);
+          bleep(600, 50, 2);
+          printLine2((char *)"--- SETTINGS ---");
+          shiftBase(); //align the current knob position with the current frequency
+        }
+        break;
+      case 3:
+        //Write the 2 bytes of the CW Timout into the eeprom memory.
+        EEPROM.put(36, QSK_DELAY);
+        printLine2((char *)"CW params set!");
+        RUNmode = RUN_NORMAL;
+        delay(700);
+        bleep(600, 50, 2);
+        printLine2((char *)"--- SETTINGS ---");
+        shiftBase(); //align the current knob position with the current frequency
+        break;
     }
     param ++;
     firstrun = true;
@@ -1096,17 +1132,26 @@ void set_CWparams() {
   else {
     RUNmode = RUN_CWOFFSET;
     firstrun = false;
-    if (param == 1) {
-      itoa(CW_OFFSET, b, DEC);
-      strcpy(c, "sidetone ");
-      strcat(c, b);
-      strcat(c, " Hz");
-    }
-    else {
-      itoa(CW_TIMEOUT, b, DEC);
-      strcpy(c, "timeout ");
-      strcat(c, b);
-      strcat(c, " ms");
+    switch (param) {
+      case 1:
+        itoa(CW_OFFSET, b, DEC);
+        strcpy(c, "sidetone ");
+        strcat(c, b);
+        strcat(c, " Hz");
+        break;
+      case 2:
+        strcpy(c, "Semi-QSK: ");
+        if (semiQSK)
+          strcat(c, "ON");
+        else
+          strcat(c, "OFF");
+        break;
+      case 3:
+        itoa(QSK_DELAY, b, DEC);
+        strcpy(c, "QSK delay ");
+        strcat(c, b);
+        strcat(c, "ms");
+        break;
     }
     printLine2(c);
   }
@@ -1272,7 +1317,6 @@ void scan_params() {
   }
 }
 
-
 // function to read the position of the tuning knob at high precision (Allard, PE1NWL)
 int knob_position() {
   unsigned long knob = 0;
@@ -1311,7 +1355,6 @@ void set_drive_level(byte level) {
   }
 }
 
-
 void doRIT() {
 
   int knob = knob_position(); // get the current tuning knob position
@@ -1330,20 +1373,19 @@ void doRIT() {
     shift = shift + 50;
 
   RIT = RIToffset;
-  if (RIT != RIT_old)
+  if (RIT != RIT_old) {
     setFrequency(frequency);
+    itoa(RIToffset, b, DEC);
+    strcpy(c, "RIT ");
+    strcat(c, b);
+    strcat(c, " Hz");
+    printLine2(c);
 
-  itoa(RIToffset, b, DEC);
-  strcpy(c, "RIT ");
-  strcat(c, b);
-  strcat(c, " Hz");
-  printLine2(c);
-  delay(20);
-  RIT_old = RIT;
-  old_knob = knob_position();
-  delay(10);
+    RIT_old = RIT;
+    old_knob = knob_position();
+    delay(30);
+  }
 }
-
 
 /**
    Function to align the current knob position with the current frequency
@@ -1373,11 +1415,10 @@ void shiftBase() {
 */
 
 void doTuning() {
-
-  int knob = knob_position(); // get the current tuning knob position
+  int knob = analogRead(ANALOG_TUNING) * 10; // get the current tuning knob position
 
   // tuning is disabled during TX (only when PTT sense line is installed)
-  if (inTx && (abs(knob - old_knob) > 10)) {
+  if (inTx && (clicks < 10) && (abs(knob - old_knob) > 20)) {
     printLine2((char *)"dial is locked");
     shiftBase();
     firstrun = true;
@@ -1386,6 +1427,7 @@ void doTuning() {
   else if (inTx)
     return;
 
+  knob = knob_position(); // get the precise tuning knob position
   // the knob is fully on the low end, move down by 10 Khz and wait for 300 msec
   if (knob < 20 && frequency > LOWEST_FREQ) {
     baseTune = baseTune - 10000UL;
@@ -1423,6 +1465,7 @@ void doTuning() {
         }
         old_knob = knob_position();
         setFrequency(frequency);
+        delay(10);
       }
     }
   }
@@ -1431,8 +1474,6 @@ void doTuning() {
     vfoA = frequency;
   else
     vfoB = frequency;
-
-  delay(50);
 }
 
 /**
@@ -1443,8 +1484,9 @@ void doTuning() {
 
    When the SPOT button is pressed while the radio is in SSB mode, the radio will only be put in FINETUNE mode (no sidetone will be generated).
 */
+
 void checkSPOT() {
-  if (digitalRead(SPOT) == LOW) {
+  if (digitalRead(SPOT) == LOW && !inTx) {
     RUNmode = RUN_FINETUNING;
     if (mode & 2) // if we are in CW mode
       tone(CW_TONE, CW_OFFSET); // generate sidetone
@@ -1459,7 +1501,7 @@ void finetune() {
   int knob = knob_position(); // get the current tuning knob position
   static int fine_old;
 
-  if (digitalRead(SPOT) == LOW) {
+  if (digitalRead(SPOT) == LOW && !inTx) {
     if (firstrun) {
       firstrun = false;
       fine = fine_old = 0;
@@ -1476,14 +1518,46 @@ void finetune() {
     if (fine != fine_old)
       setFrequency(frequency); // apply the finetuning offset
 
-    itoa(fine, b, DEC);
-    strcpy(c, "FINE ");
-    strcat(c, b);
-    strcat(c, " Hz");
-    printLine2(c);
+    memset(c, 0, sizeof(c));
+    memset(b, 0, sizeof(b));
+
+    ultoa((frequency + fine), b, DEC);
+
+    if (!vfoActive) // VFO A is active
+      strcpy(c, "A ");
+    else
+      strcpy(c, "B ");
+
+    c[2] = b[0];
+    strcat(c, ".");
+    strncat(c, &b[1], 3);
+    strcat(c, ".");
+    strncat(c, &b[4], 3); // show two more digits
+
+    switch (mode) {
+      case LSB:
+        strcat(c, " LSB");
+        break;
+      case USB:
+        strcat(c, " USB");
+        break;
+      case CWL:
+        strcat(c, " CWL");
+        break;
+      case CWU:
+        strcat(c, " CWU");
+        break;
+    }
+
+    printLine1(c);
+    if (mode & 2)
+      printLine2((char *)"SPOT + FINE TUNE");
+    else
+      printLine2((char *)"FINE TUNE");
 
     fine_old = fine;
   }
+
   else { // return to normal mode when SPOT button is released
     firstrun = true;
     RUNmode = RUN_NORMAL;
@@ -1495,7 +1569,6 @@ void finetune() {
   }
 }
 
-
 byte raduino_version; //version identifier
 
 void factory_settings() {
@@ -1505,7 +1578,8 @@ void factory_settings() {
   EEPROM.put(2, 0); //cal offset value (0 Hz)
   EEPROM.put(4, 1500); //USB offset (1500 Hz)
   EEPROM.put(6, 4); //VFO drive level in LSB/CWL mode (4 mA)
-  EEPROM.put(8, 8); //VFO drive level in USB/CWU mode (8 mA)
+  EEPROM.put(7, 8); //VFO drive level in USB/CWU mode (8 mA)
+  EEPROM.put(8, true); // T/R is semi QSK
   EEPROM.put(10, 50); //tuning range (50 kHz)
   EEPROM.put(12, 800); //CW offset / sidetone pitch (800 Hz)
   EEPROM.put(16, 7125000UL); // VFO A frequency (7125 kHz)
@@ -1588,7 +1662,6 @@ void scan() {
   }
 }
 
-
 /**
    setup is called on boot up
    It setups up the modes for various pins as inputs or outputs
@@ -1597,9 +1670,10 @@ void scan() {
    Just in case the LCD display doesn't work well, the debug log is dumped on the serial monitor
    Choose Serial Monitor from Arduino IDE's Tools menu to see the Serial.print messages
 */
+
 void setup() {
-  raduino_version = 17;
-  strcpy (c, "Raduino v1.17.1");
+  raduino_version = 18;
+  strcpy (c, "Raduino v1.18");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
@@ -1620,7 +1694,6 @@ void setup() {
   pinMode(CAL_BUTTON, INPUT_PULLUP);
   //configure the SPOT button to use the internal pull-up
   pinMode(SPOT, INPUT_PULLUP);
-
 
   pinMode(TX_RX, OUTPUT);
   digitalWrite(TX_RX, 0);
@@ -1656,7 +1729,8 @@ void setup() {
     printLine2((char *)"uncalibrated!");
 
   EEPROM.get(6, LSBdrive);
-  EEPROM.get(8, USBdrive);
+  EEPROM.get(7, USBdrive);
+  EEPROM.get(8, semiQSK);
   EEPROM.get(10, TUNING_RANGE);
   EEPROM.get(12, CW_OFFSET);
   EEPROM.get(16, vfoA);
@@ -1669,7 +1743,7 @@ void setup() {
   EEPROM.get(30, scan_stop_freq);
   EEPROM.get(32, scan_step_freq);
   EEPROM.get(34, scan_step_delay);
-  EEPROM.get(36, CW_TIMEOUT);
+  EEPROM.get(36, QSK_DELAY);
 
   //initialize the SI5351
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 25000000L, 0);
@@ -1726,16 +1800,17 @@ void loop() {
         delay(2000);
       }
       else {
-        if (!inTx)
+        if (!inTx) {
+          checkButton();
           checkSPOT();
-        if (clicks == 0 && !ritOn && !inTx)
-          printLine2((char *)" ");
+          save_frequency();
+          if (clicks == 0 && !ritOn)
+            printLine2((char *)" ");
+        }
         if (PTTsense_installed) {
           checkCW();
           checkTX();
         }
-        save_frequency();
-        checkButton();
         if (ritOn && !inTx)
           doRIT();
         else
