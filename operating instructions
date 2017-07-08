@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.17.1
+User instructions for Raduino_v1.18
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -13,7 +13,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT, SPLIT, USB and CW capability then).
 Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1709 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1783 and adapting the value to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
@@ -64,7 +64,7 @@ bypass the PTT switch during CW operation. As as result the relays will be activ
 back of it).
 (The PTT bypass transistor may be used in the future for VOX functionality as well).
 
-CW SPOT Button:
+CW SPOT/FINE TUNE Button:
 Connect a momentary pushbutton between pin D4 (connector P3) and ground.
 Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
 When operating CW it is important that both stations transmit their carriers on the same frequency.
@@ -72,8 +72,8 @@ When the SPOT button is pressed while the radio is in RX mode, the RIT will be t
 (but no carrier will be transmitted).
 While the SPOT button is held pressed, the radio will temporarily go into "FINE TUNE" mode, allowing the VFO to be set at 1Hz 
 precision. This feature works also in SSB mode (except that no sidetone will be generated then).
-Tune the VFO so that the pitch of the received CW signal is equal to the pitch of the
-CW Spot tone. By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and
+Tune the tuning pot so that the pitch of the received CW signal is equal to the pitch of the CW Spot tone.
+By aligning the CW Spot tone to match the pitch of an incoming station's signal, you will cause your signal and
 the other station's signal to be exactly on the same frequency (zero beat).
 (The SPOT button is just an extra tuning aid and is not strictly required for CW - if you don't install it, CW operation is
 still possible)
@@ -145,10 +145,12 @@ In the SETTINGS menu:
   - recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
   - press the FB again to save the setting
 
-6 short presses - set CW paramaters (sidetone pitch, CW timeout)
+6 short presses - set CW paramaters (sidetone pitch, semiQSK on/off, QSK delay)
 
  - the sidetone is generated
  - using the tuning pot, set the desired sidetone pitch
+ - press the FB
+ - using the tuning pot, select semiQSK ON or OFF
  - press the FB
  - using the tuning pot, set the desired timeout value (ms)
  - press the FB again to save the settings
