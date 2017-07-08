@@ -35,13 +35,16 @@ tuning up your antenna. In that case please note that you will be transmitting a
 keep the tune button pressed for too long to prevent overheating the final!
 
 CW-CARRIER WIRING:
-This is required for CW operation.
+This is required for CW operation (or when you want to generate a carrier for tuning)
 Connect a wire from Raduino ouput D6 (connector P3, pin 15), via a 10K series resistor, to the input of the mixer.
 See https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png
 When the key is down ouput D6 will be HIGH. This injects some DC current into the mixer so that it becomes unbalanced.
 As a result a CW carrier will be generated.
 Note: If the carrier is not generated at full output power, you may need to reduce the 10K series resistor to a lower value
 for more drive. However try to keep it as high as possible to keep a clean CW signal. Never use a resistor less than 1K!
+Extra tip: For tuning purposes a reduced carrier is usually desired. You can optionally connect a 100K pot in series with the
+10K resistor, this will allow you to reduce the strength of the carrier to a suitable level.
+
 The CW-CARRIER is only required for CW functionality. If you don't install this line everything else
 will still work normally.
 
