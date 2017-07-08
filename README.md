@@ -17,6 +17,22 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.18
+- improved CW performance at higher CW speeds:
+  reduced the delay at the start of CW transmissions (first dit is no longer lost at high speed CW)
+  optimized code so that 1:3 CW-ratio is kept even at high CW speed
+- improved FINE TUNE mode so that exact frequency (at 1 Hz precision) is displayed while the SPOT button is held pressed
+- added an extra option in the SETTINGS menu for setting semiQSK ON or OFF.
+  This may be useful for CW operators who want to manually activate the PTT (e.g. using a foot switch).
+  if semiQSK is ON:
+    radio will automatically switch to CWL (or CWU), and go into TX mode when the morse key goes down
+    go back to RX automatically when the QSKdelay time is exceeded
+    radio will switch back to LSB (or USB) when the operator presses the PTT switch
+  if semiQSK is OFF:
+    operator must activate PTT manually to move the radio in TX
+    pressing the PTT does not affect the mode. Use the Function Button to select the desired mode (LSB-USB-CWL-CWU)
+- corrected a bug that FINE TUNE was not properly applied in USB mode
+
 v1.17.1
 - corrected a bug in v1.17 in the shiftBase() routine that the radio didn't return to the correct frequency after switching 
   VFO's, RIT, SPLIT, FINE TUNE etc.
