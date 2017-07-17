@@ -41,7 +41,7 @@
 
     NOTE 1: This sketch is based on version V2 of the Si5351 library. It will not compile with V1!
 
-    NOTE 2: SI5351 library version 2.0.5 has been confirmed OK. Earlier versions compile OK but may produce
+    NOTE 2: SI5351 library version 2.0.6 has been confirmed OK. Earlier versions compile OK but may produce
     strong "tuning clicks" (clicks each time the frequency is updated).
 */
 
