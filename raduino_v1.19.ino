@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.18 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.19 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -369,26 +369,26 @@ void calibrate() {
     else
       current_setting = cal;
 
-    shift = current_setting - (analogRead(ANALOG_TUNING) * 10) + 5000;
+    shift = current_setting - analogRead(ANALOG_TUNING) + 500;
   }
 
   // The tuning knob gives readings from 0 to 1000
-  // Each step is taken as 10 Hz and the mid setting of the knob is taken as zero
+  // Each step is taken as 1 Hz and the mid setting of the knob is taken as zero
 
   if (mode == USB) {
-    USB_OFFSET = constrain((analogRead(ANALOG_TUNING) * 10) - 5000 + shift, -5000, 5000);
+    USB_OFFSET = constrain(analogRead(ANALOG_TUNING) - 500 + shift, -10000, 10000);
 
-    if (analogRead(ANALOG_TUNING) < 5 && USB_OFFSET > -5000)
+    if (analogRead(ANALOG_TUNING) < 5 && USB_OFFSET > -10000)
       shift = shift - 10;
-    else if (analogRead(ANALOG_TUNING) > 1020 && USB_OFFSET < 5000)
+    else if (analogRead(ANALOG_TUNING) > 1020 && USB_OFFSET < 10000)
       shift = shift + 10;
   }
   else {
-    cal = constrain((analogRead(ANALOG_TUNING) * 10) - 5000 + shift, -5000, 5000);
+    cal = constrain(analogRead(ANALOG_TUNING) - 500 + shift, -10000, 10000);
 
-    if (analogRead(ANALOG_TUNING) < 5 && cal > -5000)
+    if (analogRead(ANALOG_TUNING) < 5 && cal > -10000)
       shift = shift - 10;
-    else if (analogRead(ANALOG_TUNING) > 1020 && cal < 5000)
+    else if (analogRead(ANALOG_TUNING) > 1020 && cal < 10000)
       shift = shift + 10;
   }
 
@@ -1322,7 +1322,6 @@ int knob_position() {
   unsigned long knob = 0;
   // the knob value normally ranges from 0 through 1023 (10 bit ADC)
   // in order to increase the precision by a factor 10, we need 10^2 = 100x oversampling
-
   for (byte i = 0; i < 100; i++) {
     knob = knob + analogRead(ANALOG_TUNING); // take 100 readings from the ADC
   }
@@ -1428,45 +1427,44 @@ void doTuning() {
     return;
 
   knob = knob_position(); // get the precise tuning knob position
-  // the knob is fully on the low end, move down by 10 Khz and wait for 300 msec
-  if (knob < 20 && frequency > LOWEST_FREQ) {
-    baseTune = baseTune - 10000UL;
+  // the knob is fully on the low end, do fast tune: move down by max 10 Khz and wait for 300 msec
+  // if the selected TUNING RANGE is very small (less than 25 kHz) then use max 1 kHz steps instead
+  // step size is variable: the closer the knob is to the end, the larger the step size
+  if (knob < 100 && frequency > LOWEST_FREQ) {
+    if (TUNING_RANGE < 25)
+      baseTune = baseTune - (100 - knob) * 10UL; // fast tune down in max 1 kHz steps
+    else
+      baseTune = baseTune - (100 - knob) * 100UL; // fast tune down in max 10 kHz steps
     frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
     setFrequency(frequency);
-    if (clicks < 10) {
+    if (clicks < 10)
       printLine2((char *)"<<<<<<<"); // tks Paul KC8WBK
-    }
     delay(300);
   }
 
-  // the knob is full on the high end, move up by 10 Khz and wait for 300 msec
-  else if (knob > 10220 && frequency < HIGHEST_FREQ) {
-    baseTune = baseTune + 10000UL;
+  // the knob is full on the high end, do fast tune: move up by max 10 Khz and wait for 300 msec
+  // if the selected TUNING RANGE is very small (less than 25 kHz) then use max 1 kHz steps instead
+  // step size is variable: the closer the knob is to the end, the larger the step size
+  else if (knob > 10130 && frequency < HIGHEST_FREQ) {
+    if (TUNING_RANGE < 25)
+      baseTune = baseTune + (knob - 10130) * 10UL; // fast tune up in max 1 kHz steps
+    else
+      baseTune = baseTune + (knob - 10130) * 100UL; // fast tune up in max 10 kHz steps
     frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
     setFrequency(frequency);
-    if (clicks < 10) {
+    if (clicks < 10)
       printLine2((char *)"         >>>>>>>"); // tks Paul KC8WBK
-    }
     delay(300);
   }
 
-  // the tuning knob is at neither extremities, tune the signals as usual ("flutter fix" tks Jerry KE7ER)
+  // the tuning knob is at neither extremities, tune the signals as usual
   else {
-    if (knob != old_knob) {
-      static byte dir_knob;
-      if ( (knob > old_knob) && ((dir_knob == 1) || ((knob - old_knob) > 5)) || (knob < old_knob) && ((dir_knob == 0) || ((old_knob - knob) > 5)) ) {
-        if (knob > old_knob) {
-          dir_knob = 1;
-          frequency = baseTune + ((unsigned long)knob + 5UL) * (unsigned long)TUNING_RANGE / 10UL;
-        }
-        else {
-          dir_knob = 0;
-          frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
-        }
-        old_knob = knob_position();
-        setFrequency(frequency);
-        delay(10);
-      }
+    if (abs(knob - old_knob) > 2) { // improved "flutter fix": only change frequency when the current knob position is more than 2 steps away from the previous position
+      knob = (knob + old_knob) / 2; // tune to the midpoint between current and previous knob reading
+      old_knob = knob;
+      frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
+      setFrequency(frequency);
+      delay(10);
     }
   }
 
@@ -1488,65 +1486,76 @@ void doTuning() {
 void checkSPOT() {
   if (digitalRead(SPOT) == LOW && !inTx) {
     RUNmode = RUN_FINETUNING;
-    if (mode & 2) // if we are in CW mode
-      tone(CW_TONE, CW_OFFSET); // generate sidetone
+    TimeOut = millis() - 1000UL;
     if (ritOn) {
-      toggleRIT(); // disable the RIT when it was on
+      toggleRIT(); // disable the RIT if it was on
       old_knob = knob_position();
     }
   }
 }
 
 void finetune() {
+
+  // for SPOT tuning: in CW mode only, generate short side tone pulses every one second
+  if ((mode & 2) && millis() - TimeOut > 1000UL) {
+    tone(CW_TONE, CW_OFFSET);
+    if (millis() - TimeOut > 1150UL) {
+      noTone(CW_TONE);
+      TimeOut = millis();
+    }
+  }
+
   int knob = knob_position(); // get the current tuning knob position
   static int fine_old;
 
   if (digitalRead(SPOT) == LOW && !inTx) {
     if (firstrun) {
       firstrun = false;
-      fine = fine_old = 0;
+      fine = 0;
+      fine_old = 9999;
       shift = (5000 - knob) / 5;
     }
 
     //generate values -1000 ~ +1000 from the tuning pot
     fine = (knob - 5000) / 5 + shift;
-    if (knob < 5 && fine > -1000)
+    if (knob < 10 && fine > -1000 && frequency + fine > LOWEST_FREQ)
       shift = shift - 10;
-    else if (knob > 10220 && fine < 1000)
+    else if (knob > 10220 && fine < 1000 && frequency + fine < HIGHEST_FREQ)
       shift = shift + 10;
 
-    if (fine != fine_old)
+    if (fine != fine_old) {
       setFrequency(frequency); // apply the finetuning offset
 
-    memset(c, 0, sizeof(c));
-    memset(b, 0, sizeof(b));
+      memset(c, 0, sizeof(c));
+      memset(b, 0, sizeof(b));
 
-    ultoa((frequency + fine), b, DEC);
+      ultoa((frequency + fine), b, DEC);
 
-    if (!vfoActive) // VFO A is active
-      strcpy(c, "A ");
-    else
-      strcpy(c, "B ");
+      if (!vfoActive) // VFO A is active
+        strcpy(c, "A ");
+      else
+        strcpy(c, "B ");
 
-    c[2] = b[0];
-    strcat(c, ".");
-    strncat(c, &b[1], 3);
-    strcat(c, ".");
-    strncat(c, &b[4], 3); // show two more digits
+      c[2] = b[0];
+      strcat(c, ".");
+      strncat(c, &b[1], 3);
+      strcat(c, ".");
+      strncat(c, &b[4], 3); // show two more digits
 
-    switch (mode) {
-      case LSB:
-        strcat(c, " LSB");
-        break;
-      case USB:
-        strcat(c, " USB");
-        break;
-      case CWL:
-        strcat(c, " CWL");
-        break;
-      case CWU:
-        strcat(c, " CWU");
-        break;
+      switch (mode) {
+        case LSB:
+          strcat(c, " LSB");
+          break;
+        case USB:
+          strcat(c, " USB");
+          break;
+        case CWL:
+          strcat(c, " CWL");
+          break;
+        case CWU:
+          strcat(c, " CWU");
+          break;
+      }
     }
 
     printLine1(c);
@@ -1560,6 +1569,8 @@ void finetune() {
 
   else { // return to normal mode when SPOT button is released
     firstrun = true;
+    TimeOut = 0;
+    noTone(CW_TONE);
     RUNmode = RUN_NORMAL;
     frequency = frequency + fine; // apply the finetuning offset
     fine = 0;
@@ -1672,8 +1683,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 18;
-  strcpy (c, "Raduino v1.18");
+  raduino_version = 19;
+  strcpy (c, "Raduino v1.19");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
@@ -1783,6 +1794,7 @@ void setup() {
   //TUNING_RANGE = 50;    // tuning range (in kHz) of the tuning pot
 
   //recommended tuning range for a 1-turn pot: 50kHz, for a 10-turn pot: 100-200kHz
+  //recommended tuning range when radio is used mainly for CW: 10-25 kHz
 
   bleep(CW_OFFSET, 60, 3);
   bleep(CW_OFFSET, 180, 1);
