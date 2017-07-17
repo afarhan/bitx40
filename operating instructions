@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.18
+User instructions for Raduino_v1.19
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -13,7 +13,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT, SPLIT, USB and CW capability then).
 Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1783 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1794 and adapting the value to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
@@ -146,6 +146,7 @@ In the SETTINGS menu:
   - if you install a multi-turn pot instead you can extend the tuning range
   - using the tuning pot, set the desired tuning range
   - recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
+    (if the radio is mainly used for CW: a tuning range of 10-25 kHz is recommended)
   - press the FB again to save the setting
 
 6 short presses - set CW paramaters (sidetone pitch, semiQSK on/off, QSK delay)
@@ -181,7 +182,8 @@ VFO drive level (USB): 8mA
 Tuning pot range: 50 kHz
 Mode LSB for both VFO A and B
 CW side tone: 800 Hz
-CW timeout: 350 ms
+semiQSK: ON
+QSK delay: 350 ms
 Lower scan limit: 7100 kHz
 Upper scan limit: 7150 kHz
 Scan step: 1 kHz
