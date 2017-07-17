@@ -5,10 +5,10 @@ This sketch is intended as universal, standard Raduino software that should alwa
 The sketch provides additional features such as USB, CW, RIT/SPLIT etc., but these will only become functional when the related (minimal) hardware mods are made. See the operating and modification instructions at https://github.com/amunters/bitx40/blob/master/operating%20instructions for full details.
 
 Important:
-This sketch is confirmed working OK with the si5351 library v2.0.5.
+This sketch is confirmed working OK with the si5351 library v2.0.6.
 Older library versions v1.xx definitely don't work (compilation errors).
 Later versions (v2.02, v2.03, v2.04) compile OK but give strong pops/clicks in the speaker during tuning.
-The latest version 2.0.5 works OK with less tuning clicks.
+The latest version 2.0.6 works OK with less tuning clicks.
 The SI5351 library can be downloaded from https://github.com/etherkit/Si5351Arduino
 
 I develop and maintain ham radio software as a hobby and distribute it for free. However, if you like this software, please consider to donate a small amount to my son's home who stays in an institute for kids with an intellectual disability and autism. The money will be used for adapted toys, a tricycle, a trampoline or a swing. Your support will be highly appreciated by this group of 6 young adolescents!
@@ -16,6 +16,14 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 [![Donate](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PTAMBM6QT8LP8)
 
 Revision record
+
+v1.19
+- Improved responsiveness of the tuning pot for smoother tuning (less need to fiddle up and down to set the correct frequency)
+- Improved "Fast Tune" (at either ends of the tuning pot).
+  The step size is now variable: the closer to the pot limit, the larger the step size.
+- In CW SPOT tuning mode, short side tone pulses will be generated instead of a continuous tone.
+  This makes SPOT tuning easier when tuning to weak CW signals.
+- Calibration can now done at 1 Hz precision
 
 v1.18
 - improved CW performance at higher CW speeds:
