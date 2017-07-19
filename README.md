@@ -4,18 +4,18 @@ BITX40 sketch for Raduino
 This sketch is intended as universal, standard Raduino software that should always work, even on a unmodified out-of-the-box BITX40 + raduino board. Without any hardware modifications the sketch provides the standard basic LSB functionality.
 The sketch provides additional features such as USB, CW, RIT/SPLIT etc., but these will only become functional when the related (minimal) hardware mods are made. See the operating and modification instructions at https://github.com/amunters/bitx40/blob/master/operating%20instructions for full details.
 
-Important:
-This sketch is confirmed working OK with the si5351 library v2.0.6.
-Older library versions v1.xx definitely don't work (compilation errors).
-Later versions (v2.02, v2.03, v2.04) compile OK but give strong pops/clicks in the speaker during tuning.
-The latest version 2.0.6 works OK with less tuning clicks.
-The SI5351 library can be downloaded from https://github.com/etherkit/Si5351Arduino
+Note: Since v1.20 it is no longer required to download and install the SI5351 library. Minimalist routines to drive the SI5351 are now embedded in the sketch.
 
 I develop and maintain ham radio software as a hobby and distribute it for free. However, if you like this software, please consider to donate a small amount to my son's home who stays in an institute for kids with an intellectual disability and autism. The money will be used for adapted toys, a tricycle, a trampoline or a swing. Your support will be highly appreciated by this group of 6 young adolescents!
 
 [![Donate](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PTAMBM6QT8LP8)
 
 Revision record
+
+v1.20
+- Embedded Jerry Gaffke's, KE7ER, "minimalist standalone si5315bx routines". This not only makes the sketch independant from an
+  external SI5351 library, but it greatly reduces the memory usage as well. The program space is needed for future development
+  of additional features that would otherwise not fit in a Nano. Thanks Jerry!
 
 v1.19
 - Improved responsiveness of the tuning pot for smoother tuning (less need to fiddle up and down to set the correct frequency)
