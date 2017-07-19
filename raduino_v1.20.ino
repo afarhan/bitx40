@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.19 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.20 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -21,7 +21,7 @@
 
    Below are the libraries to be included for building the Raduino
 
-   The EEPROM library is used to store settings like the frequency memory, caliberation data, etc.
+   The EEPROM library is used to store settings like the frequency memory, calibration data, etc.
 */
 
 #include <EEPROM.h>
@@ -36,17 +36,31 @@
     The main chip which generates upto three oscillators of various frequencies in the
     Raduino is the Si5351a. To learn more about Si5351a you can download the datasheet
     from www.silabs.com although, strictly speaking it is not a requirment to understand this code.
-    Instead, you can look up the Si5351 library written by Jason Mildrum, NT7S. You can download and
-    install it from https://github.com/etherkit/Si5351Arduino to complile this file.
 
-    NOTE 1: This sketch is based on version V2 of the Si5351 library. It will not compile with V1!
-
-    NOTE 2: SI5351 library version 2.0.6 has been confirmed OK. Earlier versions compile OK but may produce
-    strong "tuning clicks" (clicks each time the frequency is updated).
+    We no longer use the standard SI5351 library because of its huge overhead due to many unused
+    features consuming a lot of program space. Instead of depending on an external library we now use
+    Jerry Gaffke's, KE7ER, lightweight standalone mimimalist "si5351bx" routines (see further down the
+    code). Here are some defines and declarations used by Jerry's routines:
 */
 
-#include <si5351.h>
-Si5351 si5351;
+#define BB0(x) ((uint8_t)x)             // Bust int32 into Bytes
+#define BB1(x) ((uint8_t)(x>>8))
+#define BB2(x) ((uint8_t)(x>>16))
+
+#define SI5351BX_ADDR 0x60              // I2C address of Si5351   (typical)
+#define SI5351BX_XTALPF 2               // 1:6pf  2:8pf  3:10pf
+
+// If using 27mhz crystal, set XTAL=27000000, MSA=33.  Then vco=891mhz
+#define SI5351BX_XTAL 25000000          // Crystal freq in Hz
+#define SI5351BX_MSA  35                // VCOA is at 25mhz*35 = 875mhz
+
+// User program may have reason to poke new values into these 3 RAM variables
+uint32_t si5351bx_vcoa = (SI5351BX_XTAL*SI5351BX_MSA);  // 25mhzXtal calibrate
+uint8_t  si5351bx_rdiv = 0;             // 0-7, CLK pin sees fout/(2**rdiv)
+uint8_t  si5351bx_drive[3] = {1, 1, 1}; // 0=2ma 1=4ma 2=6ma 3=8ma for CLK 0,1,2
+
+uint8_t  si5351bx_clken = 0xFF;         // Private, all CLK output drivers off
+
 /**
    The Raduino board is the size of a standard 16x2 LCD panel. It has three connectors:
 
@@ -106,7 +120,7 @@ char c[17], b[10], printBuff1[17], printBuff2[17];
    A5 (already in use for talking to the SI5351)
    A6 (analog input) is not currently used
    A7 (analog input) is connected to a center pin of good quality 100K or 10K linear potentiometer with the two other ends connected to
-       ground and +5v lines available on the connector. This implments the tuning mechanism.
+       ground and +5v lines available on the connector. This implements the tuning mechanism.
 */
 
 #define PTT_SENSE (A0)
@@ -252,6 +266,90 @@ int fine = 0; // fine tune offset (Hz)
 #define RUN_FINETUNING (8) // fine tuning mode
 
 byte RUNmode = RUN_NORMAL;
+
+// *************  SI5315 routines - tks Jerry Gaffke, KE7ER   ***********************
+
+// An minimalist standalone set of Si5351 routines.
+// VCOA is fixed at 875mhz, VCOB not used.
+// The output msynth dividers are used to generate 3 independent clocks
+// with 1hz resolution to any frequency between 4khz and 109mhz.
+
+// Usage:
+// Call si5351bx_init() once at startup with no args;
+// Call si5351bx_setfreq(clknum, freq) each time one of the
+// three output CLK pins is to be updated to a new frequency.
+// A freq of 0 serves to shut down that output clock.
+
+// The global variable si5351bx_vcoa starts out equal to the nominal VCOA
+// frequency of 25mhz*35 = 875000000 Hz.  To correct for 25mhz crystal errors,
+// the user can adjust this value.  The vco frequency will not change but
+// the number used for the (a+b/c) output msynth calculations is affected.
+// Example:  We call for a 5mhz signal, but it measures to be 5.001mhz.
+// So the actual vcoa frequency is 875mhz*5.001/5.000 = 875175000 Hz,
+// To correct for this error:     si5351bx_vcoa=875175000;
+
+// Most users will never need to generate clocks below 500khz.
+// But it is possible to do so by loading a value between 0 and 7 into
+// the global variable si5351bx_rdiv, be sure to return it to a value of 0
+// before setting some other CLK output pin.  The affected clock will be
+// divided down by a power of two defined by  2**si5351_rdiv
+// A value of zero gives a divide factor of 1, a value of 7 divides by 128.
+// This lightweight method is a reasonable compromise for a seldom used feature.
+
+void si5351bx_init() {                  // Call once at power-up, start PLLA
+  uint8_t reg;  uint32_t msxp1;
+  Wire.begin();
+  i2cWrite(149, 0);                   // SpreadSpectrum off
+  i2cWrite(3, si5351bx_clken);        // Disable all CLK output drivers
+  i2cWrite(183, SI5351BX_XTALPF << 6); // Set 25mhz crystal load capacitance
+  msxp1 = 128 * SI5351BX_MSA - 512;   // and msxp2=0, msxp3=1, not fractional
+  uint8_t  vals[8] = {0, 1, BB2(msxp1), BB1(msxp1), BB0(msxp1), 0, 0, 0};
+  i2cWriten(26, vals, 8);             // Write to 8 PLLA msynth regs
+  i2cWrite(177, 0x20);                // Reset PLLA  (0x80 resets PLLB)
+  // for (reg=16; reg<=23; reg++) i2cWrite(reg, 0x80);    // Powerdown CLK's
+  // i2cWrite(187, 0);                // No fannout of clkin, xtal, ms0, ms4
+}
+
+void si5351bx_setfreq(uint8_t clknum, uint32_t fout) {  // Set a CLK to fout Hz
+  uint32_t  msa, msb, msc, msxp1, msxp2, msxp3p2top;
+  if ((fout < 500000) || (fout > 109000000)) // If clock freq out of range
+    si5351bx_clken |= 1 << clknum;      //  shut down the clock
+  else {
+    msa = si5351bx_vcoa / fout;     // Integer part of vco/fout
+    msb = si5351bx_vcoa % fout;     // Fractional part of vco/fout
+    msc = fout;             // Divide by 2 till fits in reg
+    while (msc & 0xfff00000) {
+      msb = msb >> 1;
+      msc = msc >> 1;
+    }
+    msxp1 = (128 * msa + 128 * msb / msc - 512) | (((uint32_t)si5351bx_rdiv) << 20);
+    msxp2 = 128 * msb - 128 * msb / msc * msc; // msxp3 == msc;
+    msxp3p2top = (((msc & 0x0F0000) << 4) | msxp2);     // 2 top nibbles
+    uint8_t vals[8] = { BB1(msc), BB0(msc), BB2(msxp1), BB1(msxp1),
+                        BB0(msxp1), BB2(msxp3p2top), BB1(msxp2), BB0(msxp2)
+                      };
+    i2cWriten(42 + (clknum * 8), vals, 8); // Write to 8 msynth regs
+    i2cWrite(16 + clknum, 0x0C | si5351bx_drive[clknum]); // use local msynth
+    si5351bx_clken &= ~(1 << clknum);   // Clear bit to enable clock
+  }
+  i2cWrite(3, si5351bx_clken);        // Enable/disable clock
+}
+
+void i2cWrite(uint8_t reg, uint8_t val) {   // write reg via i2c
+  Wire.beginTransmission(SI5351BX_ADDR);
+  Wire.write(reg);
+  Wire.write(val);
+  Wire.endTransmission();
+}
+
+void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
+  Wire.beginTransmission(SI5351BX_ADDR);
+  Wire.write(reg);
+  while (vcnt--) Wire.write(*vals++);
+  Wire.endTransmission();
+}
+
+// *********** End of Jerry's si5315bx routines *********************************************************
 
 /**
    Display Routines
@@ -421,12 +519,12 @@ void calibrate() {
     RUNmode = RUN_CALIBRATE;
 
     if (mode == USB) {
-      si5351.set_freq((bfo_freq + frequency + cal / 5 * 19 - USB_OFFSET) * 100LL, SI5351_CLK2);
+      si5351bx_setfreq(2, (bfo_freq + frequency + cal / 5 * 19 - USB_OFFSET));
       itoa(USB_OFFSET, b, DEC);
     }
 
     else {
-      si5351.set_freq((bfo_freq - frequency + cal) * 100LL, SI5351_CLK2);
+      si5351bx_setfreq(2, (bfo_freq - frequency + cal));
       itoa(cal, b, DEC);
     }
 
@@ -465,9 +563,9 @@ void calibrate() {
 void setFrequency(unsigned long f) {
 
   if (mode & 1) // if we are in UPPER side band mode
-    si5351.set_freq((bfo_freq + f + cal * 19 / 5 - USB_OFFSET - RXshift + RIT + fine) * 100ULL, SI5351_CLK2);
+    si5351bx_setfreq(2, (bfo_freq + f + cal * 19 / 5 - USB_OFFSET - RXshift + RIT + fine));
   else // if we are in LOWER side band mode
-    si5351.set_freq((bfo_freq - f + cal - RXshift - RIT - fine) * 100ULL, SI5351_CLK2);
+    si5351bx_setfreq(2, (bfo_freq - f + cal - RXshift - RIT - fine));
   updateDisplay();
 }
 
@@ -1338,20 +1436,8 @@ int knob_position() {
 */
 
 void set_drive_level(byte level) {
-  switch (level) {
-    case 2:
-      si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
-      break;
-    case 4:
-      si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_4MA);
-      break;
-    case 6:
-      si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_6MA);
-      break;
-    case 8:
-      si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
-      break;
-  }
+  si5351bx_drive[2] = level / 2 - 1;
+  setFrequency(frequency);
 }
 
 void doRIT() {
@@ -1459,7 +1545,7 @@ void doTuning() {
 
   // the tuning knob is at neither extremities, tune the signals as usual
   else {
-    if (abs(knob - old_knob) > 2) { // improved "flutter fix": only change frequency when the current knob position is more than 2 steps away from the previous position
+    if (abs(knob - old_knob) > 4) { // improved "flutter fix": only change frequency when the current knob position is more than 4 steps away from the previous position
       knob = (knob + old_knob) / 2; // tune to the midpoint between current and previous knob reading
       old_knob = knob;
       frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
@@ -1577,6 +1663,8 @@ void finetune() {
     setFrequency(frequency);
     shiftBase();
     old_knob = knob_position();
+    if (clicks == 10)
+      printLine2((char *)"--- SETTINGS ---");
   }
 }
 
@@ -1683,8 +1771,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 19;
-  strcpy (c, "Raduino v1.19");
+  raduino_version = 20;
+  strcpy (c, "Raduino v1.20");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
@@ -1713,7 +1801,7 @@ void setup() {
   pinMode(CW_TONE, OUTPUT);
   digitalWrite(CW_TONE, 0);
 
-  // when Fbutton or CALbutton is pressed during power up,
+  // when Fbutton or CALbutton is kept pressed during power up,
   // or after a version update,
   // then all settings will be restored to the standard "factory" values
   byte old_version;
@@ -1757,16 +1845,9 @@ void setup() {
   EEPROM.get(36, QSK_DELAY);
 
   //initialize the SI5351
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 25000000L, 0);
-  //Serial.println("*Initiliazed Si5351\n");
-  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
-  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
-  //Serial.println("*Fixed PLL\n");
-  si5351.output_enable(SI5351_CLK0, 0);
-  si5351.output_enable(SI5351_CLK1, 0);
-  si5351.output_enable(SI5351_CLK2, 1);
-  //Serial.println("*Output enabled PLL\n");
-  si5351.set_freq(500000000L , SI5351_CLK2);
+  si5351bx_init();
+  //Serial.println("*Initialized Si5351\n");
+  si5351bx_setfreq(2, 4900000L);
   //Serial.println("*Si5350 ON\n");
 
   if (!vfoActive) { // VFO A is active
