@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.19
+User instructions for Raduino_v1.20
 
 After the version update all calibration data, drive level settings, etc will be erased.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -13,7 +13,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT, SPLIT, USB and CW capability then).
 Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 1794 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by uncommenting line 1875 and adapting the value to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
