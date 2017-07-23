@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.20 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.20.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -1294,20 +1294,20 @@ void scan_params() {
     case 1: // set the lower scan limit
 
       //generate values 7000-7500 from the tuning pot
-      scan_start_freq = constrain(analogRead(ANALOG_TUNING) / 2 + 7000 + shift, 7000, 7500);
-      if (analogRead(ANALOG_TUNING) < 5 && scan_start_freq > 7000)
+      scan_start_freq = constrain(analogRead(ANALOG_TUNING) / 2 + 7000 + shift, LOWEST_FREQ/1000, HIGHEST_FREQ/1000);
+      if (analogRead(ANALOG_TUNING) < 5 && scan_start_freq > LOWEST_FREQ/1000)
         shift = shift - 1;
-      else if (analogRead(ANALOG_TUNING) > 1020 && scan_start_freq < 7500)
+      else if (analogRead(ANALOG_TUNING) > 1020 && scan_start_freq < HIGHEST_FREQ/1000)
         shift = shift + 1;
       break;
 
     case 2: // set the upper scan limit
 
-      //generate values 7000-7500 from the tuning pot
-      scan_stop_freq = constrain(map(analogRead(ANALOG_TUNING), 0, 1024, scan_start_freq, 7500) + shift, scan_start_freq, 7500);
+      //generate values 7000-7300 from the tuning pot
+      scan_stop_freq = constrain(map(analogRead(ANALOG_TUNING), 0, 1024, scan_start_freq, HIGHEST_FREQ/1000) + shift, scan_start_freq, HIGHEST_FREQ/1000);
       if (analogRead(ANALOG_TUNING) < 5 && scan_stop_freq > scan_start_freq)
         shift = shift - 1;
-      else if (analogRead(ANALOG_TUNING) > 1020 && scan_stop_freq < 7500)
+      else if (analogRead(ANALOG_TUNING) > 1020 && scan_stop_freq < HIGHEST_FREQ/1000)
         shift = shift + 1;
       break;
 
@@ -1521,7 +1521,7 @@ void doTuning() {
       baseTune = baseTune - (100 - knob) * 10UL; // fast tune down in max 1 kHz steps
     else
       baseTune = baseTune - (100 - knob) * 100UL; // fast tune down in max 10 kHz steps
-    frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
+    frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
     setFrequency(frequency);
     if (clicks < 10)
       printLine2((char *)"<<<<<<<"); // tks Paul KC8WBK
@@ -1536,7 +1536,7 @@ void doTuning() {
       baseTune = baseTune + (knob - 10130) * 10UL; // fast tune up in max 1 kHz steps
     else
       baseTune = baseTune + (knob - 10130) * 100UL; // fast tune up in max 10 kHz steps
-    frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
+    frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
     setFrequency(frequency);
     if (clicks < 10)
       printLine2((char *)"         >>>>>>>"); // tks Paul KC8WBK
@@ -1548,7 +1548,7 @@ void doTuning() {
     if (abs(knob - old_knob) > 4) { // improved "flutter fix": only change frequency when the current knob position is more than 4 steps away from the previous position
       knob = (knob + old_knob) / 2; // tune to the midpoint between current and previous knob reading
       old_knob = knob;
-      frequency = baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL;
+      frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
       setFrequency(frequency);
       delay(10);
     }
@@ -1772,7 +1772,7 @@ void scan() {
 
 void setup() {
   raduino_version = 20;
-  strcpy (c, "Raduino v1.20");
+  strcpy (c, "Raduino v1.20.1");
 
   lcd.begin(16, 2);
   printBuff1[0] = 0;
