@@ -12,6 +12,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.20.1
+- Added some constraints so that frequency limits are respected during fast up/down scanning
+
 v1.20
 - Embedded Jerry Gaffke's, KE7ER, "minimalist standalone si5351bx routines". This not only makes the sketch independant from an
   external SI5351 library, but it greatly reduces the memory usage as well. The program space is needed for future development
