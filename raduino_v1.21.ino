@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.20.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.21 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -93,7 +93,7 @@ LiquidCrystal lcd(8, 9, 10, 11, 12, 13);
    the serial port as we can easily run out of buffer space. This is done in the serial_in_count variable.
 */
 
-char c[17], b[10], printBuff1[17], printBuff2[17];
+char c[17], b[10], printBuff[2][17];
 
 /**
    We need to carefully pick assignment of pin for various purposes.
@@ -113,8 +113,8 @@ char c[17], b[10], printBuff1[17], printBuff2[17];
 
    A0 (digital input) for sensing the PTT. Connect to the output of U3 (LM7805) of the BITX40.
       This way the A0 input will see 0V (LOW) when PTT is not pressed, +5V (HIGH) when PTT is pressed.
-   A1 (digital input) is to connect to a straight key. Open (HIGH) during key up, switch to ground (LOW) during key down.
-   A2 (digital input) can be used for calibration by grounding this line (not required when you have the Function Button at A3).
+   A1 (digital input) is to connect to a straight key, or to the 'Dit' contact of a paddle keyer. Open (HIGH) during key up, switch to ground (LOW) during key down.
+   A2 (digital input) can be used for calibration by grounding this line (not required when you have the Function Button at A3)
    A3 (digital input) is connected to a push button that can momentarily ground this line. This Function Button will be used to switch between different modes, etc.
    A4 (already in use for talking to the SI5351)
    A5 (already in use for talking to the SI5351)
@@ -138,12 +138,14 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
          +12V +12V CLK2  GND  GND CLK1  GND  GND  CLK0  GND  D2   D3   D4   D5   D6   D7
     These too are flexible with what you may do with them, for the Raduino, we use them to :
 
+    input D3  - DAH : is connected to the 'Dah' contact of an paddle keyer (switch to ground).
     input D4  - SPOT : is connected to a push button that can momentarily ground this line. When the SPOT button is pressed a sidetone will be generated for zero beat tuning.
     output D5 - CW_TONE : Side tone output
     output D6 - CW_CARRIER line : turns on the carrier for CW
     output D7 - TX_RX line : Switches between Transmit and Receive in CW mode
 */
 
+#define DAH (3)
 #define SPOT (4)
 #define CW_TONE (5)
 #define CW_CARRIER (6)
@@ -154,7 +156,7 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
     QSK_DELAY : how many milliseconds between consecutive keyup and keydowns before switching back to receive?
 */
 
-int QSK_DELAY; // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs
+int QSK_DELAY; // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs (value is set in the SETTINGS menu)
 
 /**
    The Raduino supports two VFOs : A and B and receiver incremental tuning (RIT).
@@ -178,25 +180,25 @@ bool firstrun = true;
 /**
    We need to apply some frequency offset to calibrate the dial frequency. Calibration is done in LSB mode.
 */
-int cal; // frequency offset in Hz
+int cal; // LSB frequency offset in Hz (value is set in the SETTINGS menu)
 
 /**
    In USB mode we need to apply some additional frequency offset, so that zerobeat in USB is same as in LSB
 */
-int USB_OFFSET; // USB offset in Hz
+int USB_OFFSET; // USB frequency offset in Hz (value is set in the SETTINGS menu)
 
 /**
    We can set the VFO drive to a certain level (2,4,6,8 mA)
 */
-byte LSBdrive;
-byte USBdrive;
+byte LSBdrive; // VFO drive level in LSB mode (value is set in the SETTINGS menu)
+byte USBdrive; // VFO drive level in USB mode (value is set in the SETTINGS menu)
 
 // scan parameters
 
-int scan_start_freq; // lower scan limit (kHz)
-int scan_stop_freq; // upper scan limit (kHz)
-int scan_step_freq; // step size (Hz)
-int scan_step_delay; // step delay (ms)
+int scan_start_freq; // lower scan limit (kHz) (value is set in the SETTINGS menu)
+int scan_stop_freq; // upper scan limit (kHz) (value is set in the SETTINGS menu)
+int scan_step_freq; // step size (Hz) (value is set in the SETTINGS menu)
+int scan_step_delay; // step delay (ms) (value is set in the SETTINGS menu)
 
 
 /**
@@ -215,39 +217,53 @@ byte mode = LSB; // mode of the currently active VFO
 bool inTx = false; // whether or not we are in transmit mode
 bool keyDown = false; // whether we have a key up or key down
 unsigned long TimeOut = 0;
-bool semiQSK; //whether we use semi QSK or manual PTT
+bool semiQSK; //whether we use semi QSK or manual PTT (value is set in the SETTINGS menu)
+
+
+//some variables used for the autokeyer function:
+
+bool paddle = false; //whether we use a straight key or a paddle (value is set in the SETTINGS menu)
+bool keyeron = false; //will be true while keying
+unsigned long released = 0;
+bool ditlatch = false;
+bool dahlatch = false;
+byte wpm; // keyer speed (words per minute) (value is set in the SETTINGS menu)
+byte gap = 1;
+unsigned long dit;
+unsigned long dah;
+unsigned long space = 0;
 
 /** Tuning Mechanism of the Raduino
     We use a linear pot that has two ends connected to +5 and the ground. the middle wiper
     is connected to ANALOG_TUNNING pin. Depending upon the position of the wiper, the
     reading can be anywhere from 0 to 1023.
-    If we want to use a multi-turn potentiometer with a tuning range of 500 kHz and a step
+    If we want to use a multi-turn potentiometer covering 500 kHz and a step
     size of 50 Hz we need 10,000 steps which is about 10x more than the steps that the ADC
     provides. Arduino's ADC has 10 bits which results in 1024 steps only.
     We can artificially expand the number of steps by a factor 10 by oversampling 100 times.
     As a result we get 10240 steps.
-    The tuning control works in steps of 50Hz each for every increment between 10 and 10230.
-    Hence the turning the pot fully from one end to the other will cover 50 x 10220 = 511 KHz.
+    The tuning control works in steps of 50Hz each for every increment between 0 and 10000.
+    Hence the turning the pot fully from one end to the other will cover 50 x 10000 = 500 KHz.
     But if we use the standard 1-turn pot, then a tuning range of 500 kHz would be too much.
-    (tuning would become very touchy). In the SETTINGS menu we can limit the tuning range
+    (tuning would become very touchy). In the SETTINGS menu we can limit the pot span
     depending on the potentiometer used and the band section of interest. Tuning beyond the
-    limits is still possible by the 'scan-up' and 'scan-down' mode at the end of the pot.
+    limits is still possible by the fast 'scan-up' and 'scan-down' mode at the end of the pot.
     At the two ends, that is, the tuning starts stepping up or down in 10 KHz steps.
-    To stop the scanning the pot is moved back from the edge.F
+    To stop the scanning the pot is moved back from the edge.
 */
 
-int TUNING_RANGE; // tuning range (in kHz) of the tuning pot
+int POT_SPAN; // span (in kHz) from lower end to upper end of the tuning pot (value is set in the SETTINGS menu)
 unsigned long baseTune = 7100000UL; // frequency (Hz) when tuning pot is at minimum position
 
 #define bfo_freq (11998000UL)
 
 int old_knob = 0;
 
-int CW_OFFSET; // the amount of offset (Hz) during RX, equal to sidetone frequency
+int CW_OFFSET; // the amount of offset (Hz) during RX, equal to sidetone frequency (value is set in the SETTINGS menu)
 int RXshift = 0; // the actual frequency shift that is applied during RX depending on the operation mode
 
-#define LOWEST_FREQ  (6990000UL) // absolute minimum frequency (Hz)
-#define HIGHEST_FREQ (7310000UL) //  absolute maximum frequency (Hz)
+unsigned long LOWEST_FREQ; // absolute minimum frequency (Hz) (value is set in the SETTINGS menu)
+unsigned long HIGHEST_FREQ; //  absolute maximum frequency (Hz) (value is set in the SETTINGS menu)
 
 unsigned long frequency; // the 'dial' frequency as shown on the display
 int fine = 0; // fine tune offset (Hz)
@@ -352,27 +368,17 @@ void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
 // *********** End of Jerry's si5315bx routines *********************************************************
 
 /**
-   Display Routines
-   These two display routines print a line of characters to the upper and lower lines of the 16x2 display
+   Display Routine
+   This display routine prints a line of characters to the upper or lower line of the 16x2 display
+   linenmbr = 0 is the upper line
+   linenmbr = 1 is the lower line
 */
 
-void printLine1(char *c) {
-  if (strcmp(c, printBuff1)) { // only refresh the display when there was a change
-    lcd.setCursor(0, 0); // place the cursor at the beginning of the top line
-    lcd.print(c); // write text
-    strcpy(printBuff1, c);
-
-    for (byte i = strlen(c); i < 16; i++) { // add white spaces until the end of the 16 characters line is reached
-      lcd.print(' ');
-    }
-  }
-}
-
-void printLine2(char *c) {
-  if (strcmp(c, printBuff2)) { // only refresh the display when there was a change
-    lcd.setCursor(0, 1); // place the cursor at the beginning of the bottom line
+void printLine(char linenmbr, char *c) {
+  if (strcmp(c, printBuff[linenmbr])) { // only refresh the display when there was a change
+    lcd.setCursor(0, linenmbr); // place the cursor at the beginning of the selected line
     lcd.print(c);
-    strcpy(printBuff2, c);
+    strcpy(printBuff[linenmbr], c);
 
     for (byte i = strlen(c); i < 16; i++) { // add white spaces until the end of the 16 characters line is reached
       lcd.print(' ');
@@ -381,7 +387,7 @@ void printLine2(char *c) {
 }
 
 /**
-   Building upon the previous  two functions,
+   Building upon the previous function,
    update Display paints the first line as per current state of the radio
 */
 
@@ -425,7 +431,8 @@ void updateDisplay() {
   else if (splitOn)
     strcat(c, " SP");
 
-  printLine1(c);
+  //printLine1(c);
+  printLine(0, c);
 }
 
 // function to generate a bleep sound (FB menu)
@@ -460,6 +467,8 @@ bool calbutton = false;
 
 int shift, current_setting;
 void calibrate() {
+  int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
+
   if (RUNmode != RUN_CALIBRATE) {
 
     if (mode == USB)
@@ -467,49 +476,48 @@ void calibrate() {
     else
       current_setting = cal;
 
-    shift = current_setting - analogRead(ANALOG_TUNING) + 500;
+    shift = current_setting - knob + 500;
   }
 
   // The tuning knob gives readings from 0 to 1000
   // Each step is taken as 1 Hz and the mid setting of the knob is taken as zero
 
   if (mode == USB) {
-    USB_OFFSET = constrain(analogRead(ANALOG_TUNING) - 500 + shift, -10000, 10000);
+    USB_OFFSET = constrain(knob - 500 + shift, -10000, 10000);
 
-    if (analogRead(ANALOG_TUNING) < 5 && USB_OFFSET > -10000)
+    if (knob < 5 && USB_OFFSET > -10000)
       shift = shift - 10;
-    else if (analogRead(ANALOG_TUNING) > 1020 && USB_OFFSET < 10000)
+    else if (knob > 1020 && USB_OFFSET < 10000)
       shift = shift + 10;
   }
   else {
-    cal = constrain(analogRead(ANALOG_TUNING) - 500 + shift, -10000, 10000);
+    cal = constrain(knob - 500 + shift, -10000, 10000);
 
-    if (analogRead(ANALOG_TUNING) < 5 && cal > -10000)
+    if (knob < 5 && cal > -10000)
       shift = shift - 10;
-    else if (analogRead(ANALOG_TUNING) > 1020 && cal < 10000)
+    else if (knob > 1020 && cal < 10000)
       shift = shift + 10;
   }
 
   // if Fbutton is pressed again (or when the CAL button is released), we save the setting
   if (!digitalRead(FBUTTON) || (calbutton && digitalRead(CAL_BUTTON))) {
     RUNmode = RUN_NORMAL;
-    calbutton = false;
 
     if (mode == USB) {
-      printLine2((char *)"USB Calibrated!");
+      printLine(1, (char *)"USB Calibrated!");
       //Write the 2 bytes of the USB offset into the eeprom memory.
       EEPROM.put(4, USB_OFFSET);
     }
 
     else {
-      printLine2((char *)"LSB Calibrated!");
+      printLine(1, (char *)"LSB Calibrated!");
       //Write the 2 bytes of the LSB offset into the eeprom memory.
       EEPROM.put(2, cal);
     }
 
     delay(700);
     bleep(600, 50, 2);
-    printLine2((char *)"--- SETTINGS ---");
+    printLine(1, (char *)"--- SETTINGS ---");
     shiftBase(); //align the current knob position with the current frequency
   }
 
@@ -531,7 +539,7 @@ void calibrate() {
     strcpy(c, "offset ");
     strcat(c, b);
     strcat(c, " Hz");
-    printLine2(c);
+    printLine(1, c);
   }
 }
 
@@ -655,8 +663,17 @@ void checkTX() {
 
 void checkCW() {
 
-  if (!keyDown && !digitalRead(KEY)) {
+  if (!keyDown && (!digitalRead(KEY) || (paddle && !digitalRead(DAH)))) {
     keyDown = true;
+
+    if (paddle) {
+      keyeron = true;
+      released = 0;
+      if (!digitalRead(KEY))
+        dit = millis();
+      if (!digitalRead(DAH))
+        dah = millis();
+    }
 
     if (!inTx && semiQSK) {     //switch to transmit mode if we are not already in it
 
@@ -712,15 +729,150 @@ void checkCW() {
     delay(10);  //give the relays a few ms to settle the T/R relays
   }
 
-  if (keyDown && mode & B00000010) {
+  if (!paddle && keyDown && mode & B00000010) {
     digitalWrite(CW_CARRIER, 1); // generate carrier
     tone(CW_TONE, CW_OFFSET); // generate sidetone
   }
-  else if (digitalRead(SPOT) == HIGH) {
+  else if (!paddle && digitalRead(SPOT) == HIGH) {
     digitalWrite(CW_CARRIER, 0); // stop generating the carrier
     noTone(CW_TONE); // stop generating the sidetone
   }
 }
+
+void keyer() {
+  static bool FBpressed = false;
+  static bool SPOTpressed = false;
+  
+  if (!digitalRead(FBUTTON)) // Press and release F-Button to increase keyer speed
+    FBpressed = true;
+  if (FBpressed && digitalRead(FBUTTON) && wpm < 50) {
+    FBpressed = false;
+    wpm++;
+    EEPROM.put(1, wpm);
+  }
+  if (!digitalRead(SPOT)) // Press and release SPOT button to reduce keyer speed
+    SPOTpressed = true;
+  if (SPOTpressed && digitalRead(SPOT) && wpm > 1) {
+    SPOTpressed = false;
+    wpm--;
+    EEPROM.put(1, wpm);
+  }
+
+  unsigned long element = 1200UL / wpm;
+
+  if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
+    digitalWrite(CW_CARRIER, 1); // generate carrier
+    tone(CW_TONE, CW_OFFSET); // generate sidetone
+    keyDown = true;
+  }
+  else {
+    digitalWrite(CW_CARRIER, 0); // stop generating the carrier
+    noTone(CW_TONE); // stop generating the sidetone
+    if (space == 0) {
+      space = millis();
+    }
+    if (millis() - space > gap * element) {
+      if (dit < dah) {
+        if (ditlatch || !digitalRead(KEY)) {
+          dit = millis();
+          keyeron = true;
+          ditlatch = false;
+          keyDown = true;
+          gap = 1; //standard gap between dits and dahs
+          space = 0;
+          released = 0;
+        }
+        else {
+          if (dahlatch || !digitalRead(DAH)) {
+            dah = millis();
+            keyeron = true;
+            dahlatch = false;
+            keyDown = true;
+            gap = 1; //standard gap between dits and dahs
+            space = 0;
+            released = 0;
+          }
+          else {
+            gap = 3; // autospace - character gap is 3 times the length of a dit
+            keyeron = true;
+            keyDown = true;
+
+            if (millis() - space > gap * element) {
+              keyeron = false;
+              keyDown = false;
+              gap = 1; //standard gap between dits and dahs
+              space = 0;
+              released = 0;
+            }
+          }
+        }
+      }
+      else {
+        if (dahlatch || !digitalRead(DAH)) {
+          dah = millis();
+          keyeron = true;
+          dahlatch = false;
+          keyDown = true;
+          gap = 1; //standard gap between dits and dahs
+          space = 0;
+          released = 0;
+        }
+        else {
+          if (ditlatch || !digitalRead(KEY)) {
+            dit = millis();
+            keyeron = true;
+            ditlatch = false;
+            keyDown = true;
+            gap = 1; //standard gap between dits and dahs
+            space = 0;
+            released = 0;
+          }
+          else {
+            gap = 3; // autospace - character gap is 3 times the length of a dit
+            keyeron = true;
+            keyDown = true;
+
+            if (millis() - space > gap * element) {
+              keyeron = false;
+              keyDown = false;
+              gap = 1; //standard gap between dits and dahs
+              space = 0;
+              released = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (released == 0) {
+    if (space == 0 && millis() - dit < element && digitalRead(KEY))
+      released = millis();
+    if (space == 0 && millis() - dah < 3 * element && digitalRead(DAH))
+      released = millis();
+    if (space > 0 && digitalRead(KEY) && digitalRead(DAH))
+      released = millis();
+  }
+
+  if (released > 0 && millis() - released > 15 && !digitalRead(KEY)) {
+    ditlatch = true;
+    dahlatch = false;
+  }
+  else if (released > 0 && millis() - released > 15 && !digitalRead(DAH)) {
+    dahlatch = true;
+    ditlatch = false;
+  }
+  if (keyeron) {
+    itoa(wpm, b, DEC);
+    strcpy(c, "CW-speed ");
+    strcat(c, b);
+    strcat(c, " WPM");
+    printLine(1, c);
+  }
+  else
+    printLine(1, (char *)" ");
+}
+
 
 byte param;
 
@@ -797,54 +949,54 @@ void checkButton() {
         switch (clicks) {
           //Normal menu options
           case 1:
-            printLine2((char *)"Swap VFOs");
+            printLine(1, (char *)"Swap VFOs");
             break;
           case 2:
-            printLine2((char *)"RIT ON");
+            printLine(1, (char *)"RIT ON");
             break;
           case 3:
-            printLine2((char *)"SPLIT ON/OFF");
+            printLine(1, (char *)"SPLIT ON/OFF");
             break;
           case 4:
-            printLine2((char *)"Switch mode");
+            printLine(1, (char *)"Switch mode");
             break;
           case 5:
-            printLine2((char *)"Start freq scan");
+            printLine(1, (char *)"Start freq scan");
             break;
           case 6:
-            printLine2((char *)"Monitor VFO A/B");
+            printLine(1, (char *)"Monitor VFO A/B");
             break;
 
           //SETTINGS menu options
           case 11:
-            printLine2((char *)"LSB calibration");
+            printLine(1, (char *)"LSB calibration");
             break;
           case 12:
-            printLine2((char *)"USB calibration");
+            printLine(1, (char *)"USB calibration");
             break;
           case 13:
-            printLine2((char *)"VFO drive - LSB");
+            printLine(1, (char *)"VFO drive - LSB");
             break;
           case 14:
-            printLine2((char *)"VFO drive - USB");
+            printLine(1, (char *)"VFO drive - USB");
             break;
           case 15:
-            printLine2((char *)"Set tuning range");
+            printLine(1, (char *)"Set tuning range");
             break;
           case 16:
-            printLine2((char *)"Set CW params");
+            printLine(1, (char *)"Set CW params");
             break;
           case 17:
-            printLine2((char *)"Set scan params");
+            printLine(1, (char *)"Set scan params");
             break;
         }
       }
       else if ((millis() - t1) > 600 && (millis() - t1) < 800 && clicks < 10) // long press: reset the VFOs
-        printLine2((char *)"Reset VFOs");
+        printLine(1, (char *)"Reset VFOs");
 
       if ((millis() - t1) > 3000 && clicks < 10) { // VERY long press: go to the SETTINGS menu
         bleep(1200, 150, 3);
-        printLine2((char *)"--- SETTINGS ---");
+        printLine(1, (char *)"--- SETTINGS ---");
         clicks = 10;
       }
 
@@ -852,7 +1004,7 @@ void checkButton() {
         bleep(1200, 150, 3);
         clicks = -1;
         pressed = false;
-        printLine2((char *)" --- NORMAL ---");
+        printLine(1, (char *)" --- NORMAL ---");
         delay(700);
       }
     }
@@ -888,13 +1040,13 @@ void checkButton() {
       RUNmode = RUN_SCAN;
       TimeOut = millis() + scan_step_delay;
       frequency = scan_start_freq * 1000L;
-      printLine2((char *)"freq scanning");
+      printLine(1, (char *)"freq scanning");
       break;
 
     case 6: // Monitor mode
       RUNmode = RUN_MONITOR;
       TimeOut = millis() + scan_step_delay;
-      printLine2((char *)"A/B monitoring");
+      printLine(1, (char *)"A/B monitoring");
       break;
 
     // SETTINGS MENU
@@ -928,6 +1080,7 @@ void checkButton() {
       break;
 
     case 15: // set the tuning pot range
+      param = 1;
       set_tune_range();
       break;
 
@@ -973,7 +1126,7 @@ void swapVFOs() {
 
 void toggleRIT() {
   if (!PTTsense_installed) {
-    printLine2((char *)"Not available!");
+    printLine(1, (char *)"Not available!");
     return;
   }
   ritOn = !ritOn; // toggle RIT
@@ -990,7 +1143,7 @@ void toggleRIT() {
 
 void toggleSPLIT() {
   if (!PTTsense_installed) {
-    printLine2((char *)"Not available!");
+    printLine(1, (char *)"Not available!");
     return;
   }
   splitOn = !splitOn; // toggle SPLIT
@@ -1036,7 +1189,7 @@ void SetSideBand(byte drivelevel) {
 
 // resetting the VFO's will set both VFO's to the current frequency and mode
 void resetVFOs() {
-  printLine2((char *)"VFO A=B !");
+  printLine(1, (char *)"VFO A=B !");
   vfoA = vfoB = frequency;
   mode_A = mode_B = mode;
   updateDisplay();
@@ -1047,6 +1200,7 @@ void resetVFOs() {
 
 void VFOdrive() {
   static byte drive;
+  int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
 
   if (RUNmode != RUN_DRIVELEVEL) {
 
@@ -1055,17 +1209,17 @@ void VFOdrive() {
     else // if LOWER side band mode
       current_setting = LSBdrive / 2 - 1;
 
-    shift = analogRead(ANALOG_TUNING);
+    shift = knob;
   }
 
   //generate drive level values 2,4,6,8 from tuning pot
-  drive = 2 * ((((analogRead(ANALOG_TUNING) - shift) / 50 + current_setting) & 3) + 1);
+  drive = 2 * ((((knob - shift) / 50 + current_setting) & 3) + 1);
 
   // if Fbutton is pressed again, we save the setting
 
   if (!digitalRead(FBUTTON)) {
     RUNmode = RUN_NORMAL;
-    printLine2((char *)"Drive level set!");
+    printLine(1, (char *)"Drive level set!");
 
     if (mode & 1) { // if UPPER side band mode
       USBdrive = drive;
@@ -1079,7 +1233,7 @@ void VFOdrive() {
     }
     delay(700);
     bleep(600, 50, 2);
-    printLine2((char *)"--- SETTINGS ---");
+    printLine(1, (char *)"--- SETTINGS ---");
     shiftBase(); //align the current knob position with the current frequency
   }
   else {
@@ -1092,47 +1246,115 @@ void VFOdrive() {
     strcpy(c, "drive level ");
     strcat(c, b);
     strcat(c, "mA");
-    printLine2(c);
+    printLine(1, c);
   }
 }
 
 /* this function allows the user to set the tuning range depending on the type of potentiometer
-  for a standard 1-turn pot, a range of 50 KHz is recommended
-  for a 10-turn pot, a tuning range of 200 kHz is recommended
+  for a standard 1-turn pot, a span of 50 kHz is recommended
+  for a 10-turn pot, a span of 200 kHz is recommended
 */
 void set_tune_range() {
+  int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
 
-  if (RUNmode != RUN_TUNERANGE) {
-    current_setting = TUNING_RANGE;
-    shift = current_setting - 10 * analogRead(ANALOG_TUNING) / 20;
+  if (firstrun) {
+    switch (param) {
+      case 1:
+        current_setting = LOWEST_FREQ / 1000;
+        break;
+      case 2:
+        current_setting = HIGHEST_FREQ / 1000;
+        break;
+      case 3:
+        current_setting = POT_SPAN;
+        break;
+    }
+    shift = current_setting - 10 * knob / 20;
   }
-
-  //generate values 10-500 from the tuning pot
-  TUNING_RANGE = constrain(10 * analogRead(ANALOG_TUNING) / 20 + shift, 10, 500);
-  if (analogRead(ANALOG_TUNING) < 5 && TUNING_RANGE > 10)
-    shift = shift - 10;
-  else if (analogRead(ANALOG_TUNING) > 1020 && TUNING_RANGE < 500)
-    shift = shift + 10;
-
+  switch (param) {
+    case 1:
+      //generate values 7000-7500 from the tuning pot
+      LOWEST_FREQ = constrain(10 * knob / 20 + shift, 1000UL, 30000UL);
+      if (knob < 5 && LOWEST_FREQ > 1000UL)
+        shift = shift - 10;
+      else if (knob > 1020 && LOWEST_FREQ < 30000UL)
+        shift = shift + 10;
+      break;
+    case 2:
+      //generate values 7000-7500 from the tuning pot
+      HIGHEST_FREQ = constrain(10 * knob / 20 + shift, (LOWEST_FREQ / 1000 + POT_SPAN), 30000UL);
+      if (knob < 5 && HIGHEST_FREQ > (LOWEST_FREQ / 1000 + POT_SPAN))
+        shift = shift - 10;
+      else if (knob > 1020 && HIGHEST_FREQ < 30000UL)
+        shift = shift + 10;
+      break;
+    case 3:
+      //generate values 10-500 from the tuning pot
+      POT_SPAN = constrain(10 * knob / 20 + shift, 10, 500);
+      if (knob < 5 && POT_SPAN > 10)
+        shift = shift - 10;
+      else if (knob > 1020 && POT_SPAN < 500)
+        shift = shift + 10;
+      break;
+  }
   // if Fbutton is pressed again, we save the setting
   if (!digitalRead(FBUTTON)) {
-    //Write the 2 bytes of the tuning range into the eeprom memory.
-    EEPROM.put(10, TUNING_RANGE);
-    printLine2((char *)"Tune range set!");
-    RUNmode = RUN_NORMAL;
-    delay(700);
-    bleep(600, 50, 2);
-    printLine2((char *)"--- SETTINGS ---");
-    shiftBase(); //align the current knob position with the current frequency
+    switch (param) {
+      case 1:
+        LOWEST_FREQ = LOWEST_FREQ * 1000UL;
+        //Write the 2 bytes of the minimum frequency into the eeprom memory.
+        EEPROM.put(39, LOWEST_FREQ);
+        bleep(600, 50, 1);
+        delay(200);
+        break;
+      case 2:
+        HIGHEST_FREQ = HIGHEST_FREQ * 1000UL;
+        //Write the 2 bytes of the maximum frequency into the eeprom memory.
+        EEPROM.put(43, HIGHEST_FREQ);
+        bleep(600, 50, 1);
+        delay(200);
+        break;
+      case 3:
+        //Write the 2 bytes of the pot span into the eeprom memory.
+        EEPROM.put(10, POT_SPAN);
+        printLine(1, (char *)"Tune range set!");
+        RUNmode = RUN_NORMAL;
+        bleep(600, 50, 2);
+        delay(700);
+        printLine(1, (char *)"--- SETTINGS ---");
+        shiftBase(); //align the current knob position with the current frequency
+        break;
+    }
+    param ++;
+    firstrun = true;
   }
 
   else {
     RUNmode = RUN_TUNERANGE;
-    itoa(TUNING_RANGE, b, DEC);
-    strcpy(c, "range ");
-    strcat(c, b);
-    strcat(c, " kHz");
-    printLine2(c);
+    firstrun = false;
+    switch (param) {
+      case 1:
+        ultoa(LOWEST_FREQ, b, DEC);
+        strcpy(c, "min ");
+        strcat(c, b);
+        strcat(c, " kHz");
+        printLine(1, c);
+        break;
+      case 2:
+        ultoa(HIGHEST_FREQ, b, DEC);
+        strcpy(c, "max ");
+        strcat(c, b);
+        strcat(c, " kHz");
+        printLine(1, c);
+        break;
+      case 3:
+        itoa(POT_SPAN, b, DEC);
+        strcpy(c, "pot span ");
+        strcat(c, b);
+        strcat(c, " kHz");
+        printLine(1, c);
+        break;
+    }
   }
 }
 
@@ -1140,6 +1362,7 @@ void set_tune_range() {
 */
 
 void set_CWparams() {
+  int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
 
   if (firstrun) {
     switch (param) {
@@ -1149,15 +1372,19 @@ void set_CWparams() {
         RXshift = CW_OFFSET;
         QSK_DELAY = 10; // during CW offset adjustment, temporarily set QSK_DELAY to minimum
         current_setting = CW_OFFSET;
-        shift = current_setting - analogRead(ANALOG_TUNING) - 200;
+        shift = current_setting - knob - 200;
         break;
       case 2:
-        current_setting = semiQSK;
-        shift = analogRead(ANALOG_TUNING);
+        current_setting = paddle;
+        shift = knob;
         break;
       case 3:
+        current_setting = semiQSK;
+        shift = knob;
+        break;
+      case 4:
         current_setting = QSK_DELAY;
-        shift = current_setting - 10 * (analogRead(ANALOG_TUNING) / 10);
+        shift = current_setting - 10 * (knob / 10);
         break;
     }
   }
@@ -1165,22 +1392,26 @@ void set_CWparams() {
   switch (param) {
     case 1:
       //generate values 500-1000 from the tuning pot
-      CW_OFFSET = constrain(analogRead(ANALOG_TUNING) + 200 + shift, 200, 1200);
-      if (analogRead(ANALOG_TUNING) < 5 && CW_OFFSET > 200)
+      CW_OFFSET = constrain(knob + 200 + shift, 200, 1200);
+      if (knob < 5 && CW_OFFSET > 200)
         shift = shift - 10;
-      else if (analogRead(ANALOG_TUNING) > 1020 && CW_OFFSET < 1200)
+      else if (knob > 1020 && CW_OFFSET < 1200)
         shift = shift + 10;
       break;
     case 2:
       //generate values 0-1-0-1 from the tuning pot
-      semiQSK = ((((analogRead(ANALOG_TUNING) - shift) & 64) / 64) + current_setting) & 1;
+      paddle = ((((knob - shift) & 64) / 64) + current_setting) & 1;
       break;
     case 3:
+      //generate values 0-1-0-1 from the tuning pot
+      semiQSK = ((((knob - shift) & 64) / 64) + current_setting) & 1;
+      break;
+    case 4:
       //generate values 10-1000 from the tuning pot
-      QSK_DELAY = constrain(10 * ( analogRead(ANALOG_TUNING) / 10) + shift, 10, 1000);
-      if (analogRead(ANALOG_TUNING) < 5 && QSK_DELAY >= 20)
+      QSK_DELAY = constrain(10 * (knob / 10) + shift, 10, 1000);
+      if (knob < 5 && QSK_DELAY >= 20)
         shift = shift - 10;
-      else if (analogRead(ANALOG_TUNING) > 1020 && QSK_DELAY < 1000)
+      else if (knob > 1020 && QSK_DELAY < 1000)
         shift = shift + 10;
       break;
   }
@@ -1196,6 +1427,11 @@ void set_CWparams() {
         delay(200);
         break;
       case 2:
+        EEPROM.put(38, paddle);
+        bleep(600, 50, 1);
+        delay(200);
+        break;
+      case 3:
         EEPROM.put(8, semiQSK);
         if (semiQSK) {
           bleep(600, 50, 1);
@@ -1204,22 +1440,22 @@ void set_CWparams() {
         else {
           QSK_DELAY = 10; // set CW timeout to minimum when manual PTT is selected
           EEPROM.put(36, QSK_DELAY);
-          printLine2((char *)"CW params set!");
+          printLine(1, (char *)"CW params set!");
           RUNmode = RUN_NORMAL;
           delay(700);
           bleep(600, 50, 2);
-          printLine2((char *)"--- SETTINGS ---");
+          printLine(1, (char *)"--- SETTINGS ---");
           shiftBase(); //align the current knob position with the current frequency
         }
         break;
-      case 3:
+      case 4:
         //Write the 2 bytes of the CW Timout into the eeprom memory.
         EEPROM.put(36, QSK_DELAY);
-        printLine2((char *)"CW params set!");
+        printLine(1, (char *)"CW params set!");
         RUNmode = RUN_NORMAL;
         delay(700);
         bleep(600, 50, 2);
-        printLine2((char *)"--- SETTINGS ---");
+        printLine(1, (char *)"--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
         break;
     }
@@ -1238,20 +1474,27 @@ void set_CWparams() {
         strcat(c, " Hz");
         break;
       case 2:
+        strcpy(c, "CW-key: ");
+        if (paddle)
+          strcat(c, "paddle");
+        else
+          strcat(c, "straight");
+        break;
+      case 3:
         strcpy(c, "Semi-QSK: ");
         if (semiQSK)
           strcat(c, "ON");
         else
           strcat(c, "OFF");
         break;
-      case 3:
+      case 4:
         itoa(QSK_DELAY, b, DEC);
         strcpy(c, "QSK delay ");
         strcat(c, b);
         strcat(c, "ms");
         break;
     }
-    printLine2(c);
+    printLine(1, c);
   }
 }
 
@@ -1260,31 +1503,32 @@ void set_CWparams() {
 
 void scan_params() {
 
+  int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
   if (firstrun) {
     switch (param) {
 
       case 1: // set the lower scan limit
 
         current_setting = scan_start_freq;
-        shift = current_setting - analogRead(ANALOG_TUNING) / 2 - 7000;
+        shift = current_setting - knob / 2 - LOWEST_FREQ / 1000;
         break;
 
       case 2: // set the upper scan limit
 
         current_setting = scan_stop_freq;
-        shift = current_setting - map(analogRead(ANALOG_TUNING), 0, 1024, scan_start_freq, 7500);
+        shift = current_setting - map(knob, 0, 1024, scan_start_freq, HIGHEST_FREQ / 1000);
         break;
 
       case 3: // set the scan step size
 
         current_setting = scan_step_freq;
-        shift = current_setting - 50 * (analogRead(ANALOG_TUNING) / 5);
+        shift = current_setting - 50 * (knob / 5);
         break;
 
       case 4: // set the scan step delay
 
         current_setting = scan_step_delay;
-        shift = current_setting - 50 * (analogRead(ANALOG_TUNING) / 25);
+        shift = current_setting - 50 * (knob / 25);
         break;
     }
   }
@@ -1294,40 +1538,40 @@ void scan_params() {
     case 1: // set the lower scan limit
 
       //generate values 7000-7500 from the tuning pot
-      scan_start_freq = constrain(analogRead(ANALOG_TUNING) / 2 + 7000 + shift, LOWEST_FREQ/1000, HIGHEST_FREQ/1000);
-      if (analogRead(ANALOG_TUNING) < 5 && scan_start_freq > LOWEST_FREQ/1000)
+      scan_start_freq = constrain(knob / 2 + 7000 + shift, LOWEST_FREQ / 1000, HIGHEST_FREQ / 1000);
+      if (knob < 5 && scan_start_freq > LOWEST_FREQ / 1000)
         shift = shift - 1;
-      else if (analogRead(ANALOG_TUNING) > 1020 && scan_start_freq < HIGHEST_FREQ/1000)
+      else if (knob > 1020 && scan_start_freq < HIGHEST_FREQ / 1000)
         shift = shift + 1;
       break;
 
     case 2: // set the upper scan limit
 
-      //generate values 7000-7300 from the tuning pot
-      scan_stop_freq = constrain(map(analogRead(ANALOG_TUNING), 0, 1024, scan_start_freq, HIGHEST_FREQ/1000) + shift, scan_start_freq, HIGHEST_FREQ/1000);
-      if (analogRead(ANALOG_TUNING) < 5 && scan_stop_freq > scan_start_freq)
+      //generate values 7000-7500 from the tuning pot
+      scan_stop_freq = constrain(map(knob, 0, 1024, scan_start_freq, HIGHEST_FREQ / 1000) + shift, scan_start_freq, HIGHEST_FREQ / 1000);
+      if (knob < 5 && scan_stop_freq > scan_start_freq)
         shift = shift - 1;
-      else if (analogRead(ANALOG_TUNING) > 1020 && scan_stop_freq < HIGHEST_FREQ/1000)
+      else if (knob > 1020 && scan_stop_freq < HIGHEST_FREQ / 1000)
         shift = shift + 1;
       break;
 
     case 3: // set the scan step size
 
       //generate values 50-10000 from the tuning pot
-      scan_step_freq = constrain(50 * (analogRead(ANALOG_TUNING) / 5) + shift, 50, 10000);
-      if (analogRead(ANALOG_TUNING) < 5 && scan_step_freq > 50)
+      scan_step_freq = constrain(50 * (knob / 5) + shift, 50, 10000);
+      if (knob < 5 && scan_step_freq > 50)
         shift = shift - 50;
-      else if (analogRead(ANALOG_TUNING) > 1020 && scan_step_freq < 10000)
+      else if (knob > 1020 && scan_step_freq < 10000)
         shift = shift + 50;
       break;
 
     case 4: // set the scan step delay
 
       //generate values 0-2500 from the tuning pot
-      scan_step_delay = constrain(50 * (analogRead(ANALOG_TUNING) / 25) + shift, 0, 2000);
-      if (analogRead(ANALOG_TUNING) < 5 && scan_step_delay > 0)
+      scan_step_delay = constrain(50 * (knob / 25) + shift, 0, 2000);
+      if (knob < 5 && scan_step_delay > 0)
         shift = shift - 50;
-      else if (analogRead(ANALOG_TUNING) > 1020 && scan_step_delay < 2000)
+      else if (knob > 1020 && scan_step_delay < 2000)
         shift = shift + 50;
       break;
   }
@@ -1362,11 +1606,11 @@ void scan_params() {
 
         //Write the 2 bytes of the step delay into the eeprom memory.
         EEPROM.put(34, scan_step_delay);
-        printLine2((char *)"Scan params set!");
+        printLine(1, (char *)"Scan params set!");
         RUNmode = RUN_NORMAL;
         delay(700);
         bleep(600, 50, 2);
-        printLine2((char *)"--- SETTINGS ---");
+        printLine(1, (char *)"--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
         break;
     }
@@ -1411,7 +1655,7 @@ void scan_params() {
         strcat(c, " ms");
         break;
     }
-    printLine2(c);
+    printLine(1, c);
   }
 }
 
@@ -1424,7 +1668,8 @@ int knob_position() {
     knob = knob + analogRead(ANALOG_TUNING); // take 100 readings from the ADC
   }
   knob = (knob + 5L) / 10L; // take the average of the 100 readings and multiply the result by 10
-  //now the knob value ranges from 0 through 10230 (10x more precision)
+  //now the knob value ranges from 0 through 10,230 (10x more precision)
+  knob = knob * 10000L / 10230L; // scale the knob range down to 0-10,000
   return (int)knob;
 }
 
@@ -1464,7 +1709,7 @@ void doRIT() {
     strcpy(c, "RIT ");
     strcat(c, b);
     strcat(c, " Hz");
-    printLine2(c);
+    printLine(1, c);
 
     RIT_old = RIT;
     old_knob = knob_position();
@@ -1484,27 +1729,27 @@ void doRIT() {
 void shiftBase() {
   setFrequency(frequency);
   unsigned long knob = knob_position(); // get the current tuning knob position
-  baseTune = frequency - (knob * (unsigned long)TUNING_RANGE / 10UL);
+  baseTune = frequency - (knob * (unsigned long)POT_SPAN / 10UL);
 }
 
 /**
    The Tuning mechansim of the Raduino works in a very innovative way. It uses a tuning potentiometer.
    The tuning potentiometer that a voltage between 0 and 5 volts at ANALOG_TUNING pin of the control connector.
-   This is read as a value between 0 and 1000. By 100x oversampling this range is expanded by a factor 10.
+   This is read as a value between 0 and 1023. By 100x oversampling this range is expanded by a factor 10.
    Hence, the tuning pot gives you 10,000 steps from one end to the other end of its rotation. Each step is 50 Hz,
-   thus giving maximum 500 Khz of tuning range. The tuning range is scaled down depending on the TUNING_RANGE value.
+   thus giving maximum 500 Khz of tuning range. The tuning range is scaled down depending on the POT_SPAN value.
    The standard tuning range (for the standard 1-turn pot) is 50 Khz. But it is also possible to use a 10-turn pot
-   to tune accross the entire 40m band. The desired TUNING_RANGE can be set via the Function Button in the SETTINGS menu.
+   to tune accross the entire 40m band. The desired POT_SPAN can be set via the Function Button in the SETTINGS menu.
    When the potentiometer is moved to either end of the range, the frequency starts automatically moving
-   up or down in 10 Khz increments, so it is still possible to tune beyond the range set by TUNING_RANGE.
+   up or down in 10 Khz increments, so it is still possible to tune beyond the range set by POT_SPAN.
 */
 
 void doTuning() {
-  int knob = analogRead(ANALOG_TUNING) * 10; // get the current tuning knob position
+  int knob = analogRead(ANALOG_TUNING) * 100000 / 10230; // get the current tuning knob position
 
   // tuning is disabled during TX (only when PTT sense line is installed)
   if (inTx && (clicks < 10) && (abs(knob - old_knob) > 20)) {
-    printLine2((char *)"dial is locked");
+    printLine(1, (char *)"dial is locked");
     shiftBase();
     firstrun = true;
     return;
@@ -1513,34 +1758,46 @@ void doTuning() {
     return;
 
   knob = knob_position(); // get the precise tuning knob position
-  // the knob is fully on the low end, do fast tune: move down by max 10 Khz and wait for 300 msec
-  // if the selected TUNING RANGE is very small (less than 25 kHz) then use max 1 kHz steps instead
-  // step size is variable: the closer the knob is to the end, the larger the step size
-  if (knob < 100 && frequency > LOWEST_FREQ) {
-    if (TUNING_RANGE < 25)
-      baseTune = baseTune - (100 - knob) * 10UL; // fast tune down in max 1 kHz steps
-    else
-      baseTune = baseTune - (100 - knob) * 100UL; // fast tune down in max 10 kHz steps
-    frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
+  // the knob is fully on the low end, do fast tune: move down by 10 Khz and wait for 300 msec
+  // if the POT_SPAN is very small (less than 25 kHz) then use 1 kHz steps instead
+
+  if (knob == 0) {
+    if (frequency > LOWEST_FREQ) {
+      if (POT_SPAN < 25)
+        baseTune = baseTune - 1000UL; // fast tune down in 1 kHz steps
+      else
+        baseTune = baseTune - 10000UL; // fast tune down in 10 kHz steps
+      frequency = baseTune + (unsigned long)knob * (unsigned long)POT_SPAN / 10UL;
+      if (clicks < 10)
+        printLine(1, (char *)"<<<<<<<"); // tks Paul KC8WBK
+      delay(300);
+    }
+    if (frequency <= LOWEST_FREQ)
+      baseTune = frequency = LOWEST_FREQ;
     setFrequency(frequency);
-    if (clicks < 10)
-      printLine2((char *)"<<<<<<<"); // tks Paul KC8WBK
-    delay(300);
+    old_knob = 0;
   }
 
-  // the knob is full on the high end, do fast tune: move up by max 10 Khz and wait for 300 msec
-  // if the selected TUNING RANGE is very small (less than 25 kHz) then use max 1 kHz steps instead
-  // step size is variable: the closer the knob is to the end, the larger the step size
-  else if (knob > 10130 && frequency < HIGHEST_FREQ) {
-    if (TUNING_RANGE < 25)
-      baseTune = baseTune + (knob - 10130) * 10UL; // fast tune up in max 1 kHz steps
-    else
-      baseTune = baseTune + (knob - 10130) * 100UL; // fast tune up in max 10 kHz steps
-    frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
+  // the knob is full on the high end, do fast tune: move up by 10 Khz and wait for 300 msec
+  // if the POT_SPAN is very small (less than 25 kHz) then use 1 kHz steps instead
+
+  else if (knob == 10000) {
+    if (frequency < HIGHEST_FREQ) {
+      if (POT_SPAN < 25)
+        baseTune = baseTune + 1000UL; // fast tune up in 1 kHz steps
+      else
+        baseTune = baseTune + 10000UL; // fast tune up in 10 kHz steps
+      frequency = baseTune + (unsigned long)knob * (unsigned long)POT_SPAN / 10UL;
+      if (clicks < 10)
+        printLine(1, (char *)"         >>>>>>>"); // tks Paul KC8WBK
+      delay(300);
+    }
+    if (frequency >= HIGHEST_FREQ) {
+      baseTune = HIGHEST_FREQ - (POT_SPAN * 1000UL);
+      frequency = HIGHEST_FREQ;
+    }
     setFrequency(frequency);
-    if (clicks < 10)
-      printLine2((char *)"         >>>>>>>"); // tks Paul KC8WBK
-    delay(300);
+    old_knob = 10000;
   }
 
   // the tuning knob is at neither extremities, tune the signals as usual
@@ -1548,7 +1805,7 @@ void doTuning() {
     if (abs(knob - old_knob) > 4) { // improved "flutter fix": only change frequency when the current knob position is more than 4 steps away from the previous position
       knob = (knob + old_knob) / 2; // tune to the midpoint between current and previous knob reading
       old_knob = knob;
-      frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)TUNING_RANGE / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
+      frequency = constrain(baseTune + (unsigned long)knob * (unsigned long)POT_SPAN / 10UL, LOWEST_FREQ, HIGHEST_FREQ);
       setFrequency(frequency);
       delay(10);
     }
@@ -1644,11 +1901,11 @@ void finetune() {
       }
     }
 
-    printLine1(c);
+    printLine(0, c);
     if (mode & 2)
-      printLine2((char *)"SPOT + FINE TUNE");
+      printLine(1, (char *)"SPOT + FINE TUNE");
     else
-      printLine2((char *)"FINE TUNE");
+      printLine(1, (char *)"FINE TUNE");
 
     fine_old = fine;
   }
@@ -1664,22 +1921,23 @@ void finetune() {
     shiftBase();
     old_knob = knob_position();
     if (clicks == 10)
-      printLine2((char *)"--- SETTINGS ---");
+      printLine(1, (char *)"--- SETTINGS ---");
   }
 }
 
 byte raduino_version; //version identifier
 
 void factory_settings() {
-  printLine1((char *)"loading standard");
-  printLine2((char *)"settings...");
+  printLine(0, (char *)"loading standard");
+  printLine(1, (char *)"settings...");
   EEPROM.put(0, raduino_version); //version identifier
-  EEPROM.put(2, 0); //cal offset value (0 Hz)
+  EEPROM.put(1, 16); //CW keyer speed
+  EEPROM.put(2, 0); //LSB offset value (0 Hz)
   EEPROM.put(4, 1500); //USB offset (1500 Hz)
   EEPROM.put(6, 4); //VFO drive level in LSB/CWL mode (4 mA)
   EEPROM.put(7, 8); //VFO drive level in USB/CWU mode (8 mA)
   EEPROM.put(8, true); // T/R is semi QSK
-  EEPROM.put(10, 50); //tuning range (50 kHz)
+  EEPROM.put(10, 50); //tuning pot span (50 kHz)
   EEPROM.put(12, 800); //CW offset / sidetone pitch (800 Hz)
   EEPROM.put(16, 7125000UL); // VFO A frequency (7125 kHz)
   EEPROM.put(20, 7125000UL); // VFO B frequency (7125 kHz)
@@ -1692,6 +1950,9 @@ void factory_settings() {
   EEPROM.put(32, 1000); // scan_step_freq (1000 Hz)
   EEPROM.put(34, 500); // scan_step_delay (500 ms)
   EEPROM.put(36, 350); // CW timout (350 ms)
+  EEPROM.put(38, false); // straight key mode
+  EEPROM.put(39, 7000000UL); // absolute minimum frequency
+  EEPROM.put(43, 7300000UL); // absolute maximum frequency
   delay(1000);
 }
 
@@ -1771,12 +2032,10 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 20;
-  strcpy (c, "Raduino v1.20.1");
+  raduino_version = 21;
+  strcpy (c, "Raduino v1.21");
 
   lcd.begin(16, 2);
-  printBuff1[0] = 0;
-  printBuff2[0] = 0;
 
   // Start serial and initialize the Si5351
   Serial.begin(9600);
@@ -1791,6 +2050,8 @@ void setup() {
   pinMode(PTT_SENSE, INPUT_PULLUP);
   //configure the CAL button to use the internal pull-up
   pinMode(CAL_BUTTON, INPUT_PULLUP);
+  //configure the DAH input to use the internal pull-up
+  pinMode(DAH, INPUT_PULLUP);
   //configure the SPOT button to use the internal pull-up
   pinMode(SPOT, INPUT_PULLUP);
 
@@ -1816,21 +2077,22 @@ void setup() {
   else
     PTTsense_installed = false; //no it's not installed
 
-  printLine1(c);
+  printLine(0, c);
   delay(1000);
 
   //retrieve user settings from EEPROM
+  EEPROM.get(1, wpm);
   EEPROM.get(2, cal);
   EEPROM.get(4, USB_OFFSET);
 
   //display warning message when calibration data was erased
   if ((cal == 0) && (USB_OFFSET == 1500))
-    printLine2((char *)"uncalibrated!");
+    printLine(1, (char *)"uncalibrated!");
 
   EEPROM.get(6, LSBdrive);
   EEPROM.get(7, USBdrive);
   EEPROM.get(8, semiQSK);
-  EEPROM.get(10, TUNING_RANGE);
+  EEPROM.get(10, POT_SPAN);
   EEPROM.get(12, CW_OFFSET);
   EEPROM.get(16, vfoA);
   EEPROM.get(20, vfoB);
@@ -1843,6 +2105,9 @@ void setup() {
   EEPROM.get(32, scan_step_freq);
   EEPROM.get(34, scan_step_delay);
   EEPROM.get(36, QSK_DELAY);
+  EEPROM.get(38, paddle);
+  EEPROM.get(39, LOWEST_FREQ);
+  EEPROM.get(43, HIGHEST_FREQ);
 
   //initialize the SI5351
   si5351bx_init();
@@ -1869,13 +2134,13 @@ void setup() {
 
   shiftBase(); //align the current knob position with the current frequency
 
-  //If no FButton is installed, and you still want to use custom tuning range settings,
-  //uncomment the following line and adapt the value as desired:
+  //If no FButton is installed, and you still want to use custom tuning pot span settings,
+  //uncomment (remove the two slashes) the following line and adapt the value as desired:
 
-  //TUNING_RANGE = 50;    // tuning range (in kHz) of the tuning pot
+  //POT_SPAN = 50;    // tuning pot span (in kHz) from lower end to upper end of the tuning pot
 
-  //recommended tuning range for a 1-turn pot: 50kHz, for a 10-turn pot: 100-200kHz
-  //recommended tuning range when radio is used mainly for CW: 10-25 kHz
+  //recommended pot span for a 1-turn pot: 50kHz, for a 10-turn pot: 100-200kHz
+  //recommended pot span when radio is used mainly for CW: 10-25 kHz
 
   bleep(CW_OFFSET, 60, 3);
   bleep(CW_OFFSET, 180, 1);
@@ -1888,8 +2153,8 @@ void loop() {
         RUNmode = RUN_CALIBRATE;
         calbutton = true;
         factory_settings();
-        printLine1((char *)"Calibrating: Set");
-        printLine2((char *)"to zerobeat");
+        printLine(0, (char *)"Calibrating: Set");
+        printLine(1, (char *)"to zerobeat");
         delay(2000);
       }
       else {
@@ -1898,11 +2163,13 @@ void loop() {
           checkSPOT();
           save_frequency();
           if (clicks == 0 && !ritOn)
-            printLine2((char *)" ");
+            printLine(1, (char *)" ");
         }
         if (PTTsense_installed) {
           checkCW();
           checkTX();
+          if (keyeron)
+            keyer();
         }
         if (ritOn && !inTx)
           doRIT();
