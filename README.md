@@ -13,13 +13,13 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 Revision record
 
 v1.21
-- Added automatic CW keyer functionality
+- Added automatic CW keyer functionality.
   The default setup is for straight key operation. If you want to use the automatic keyer, connect a paddle keyer to
   pin A1 (dit) and pin D3 (dah). In the SETTINGS menu, set CW-key type to "paddle".
   While keying, the keyer speed can be adjusted by pressing the Function Button (speed up) or the SPOT button (speed down).
   Keyer speed can be set from 1 - 50 WPM.
 - It is now possible to set the minimum and maximum tuning frequency via the SETTINGS menu (no longer need to edit the sketch).
-- Improved the tuning pot behaviour at the lower and upper ends of the pot 
+- Improved the tuning pot behaviour at the lower and upper ends of the pot.
 
 v1.20.1
 - Added some constraints so that frequency limits are respected during fast up/down scanning
