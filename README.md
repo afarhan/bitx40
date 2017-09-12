@@ -12,6 +12,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.22
+- Added some functionality allowing the user to choose "paddle" or "reversed paddle" from the SETTINGS menu
+
 v1.21
 - Added automatic CW keyer functionality.
   The default setup is for straight key operation. If you want to use the automatic keyer, connect a paddle keyer to
