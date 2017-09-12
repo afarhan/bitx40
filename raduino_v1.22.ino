@@ -222,7 +222,7 @@ bool semiQSK; //whether we use semi QSK or manual PTT (value is set in the SETTI
 
 //some variables used for the autokeyer function:
 
-bool paddle = false; //whether we use a straight key or a paddle (value is set in the SETTINGS menu)
+byte key_type = 0; // straight key (0), paddle (1) or reversed paddle (2) (value is set in the SETTINGS menu)
 bool keyeron = false; //will be true while keying
 unsigned long released = 0;
 bool ditlatch = false;
@@ -663,16 +663,24 @@ void checkTX() {
 
 void checkCW() {
 
-  if (!keyDown && (!digitalRead(KEY) || (paddle && !digitalRead(DAH)))) {
+  if (!keyDown && (!digitalRead(KEY) || (key_type > 0 && !digitalRead(DAH)))) {
     keyDown = true;
 
-    if (paddle) {
+    if (key_type > 0) { // if we are using the keyer
       keyeron = true;
       released = 0;
-      if (!digitalRead(KEY))
-        dit = millis();
-      if (!digitalRead(DAH))
-        dah = millis();
+      if (key_type == 1) { // paddle not reversed
+        if (!digitalRead(KEY))
+          dit = millis();
+        if (!digitalRead(DAH))
+          dah = millis();
+      }
+      else { // paddle is reversed
+        if (!digitalRead(DAH))
+          dit = millis();
+        if (!digitalRead(KEY))
+          dah = millis();
+      }
     }
 
     if (!inTx && semiQSK) {     //switch to transmit mode if we are not already in it
@@ -729,11 +737,11 @@ void checkCW() {
     delay(10);  //give the relays a few ms to settle the T/R relays
   }
 
-  if (!paddle && keyDown && mode & B00000010) {
+  if (key_type == 0 && keyDown && mode & B00000010) {
     digitalWrite(CW_CARRIER, 1); // generate carrier
     tone(CW_TONE, CW_OFFSET); // generate sidetone
   }
-  else if (!paddle && digitalRead(SPOT) == HIGH) {
+  else if (key_type == 0 && digitalRead(SPOT) == HIGH) {
     digitalWrite(CW_CARRIER, 0); // stop generating the carrier
     noTone(CW_TONE); // stop generating the sidetone
   }
@@ -742,7 +750,7 @@ void checkCW() {
 void keyer() {
   static bool FBpressed = false;
   static bool SPOTpressed = false;
-  
+
   if (!digitalRead(FBUTTON)) // Press and release F-Button to increase keyer speed
     FBpressed = true;
   if (FBpressed && digitalRead(FBUTTON) && wpm < 50) {
@@ -760,27 +768,54 @@ void keyer() {
 
   unsigned long element = 1200UL / wpm;
 
-  if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
-    digitalWrite(CW_CARRIER, 1); // generate carrier
-    tone(CW_TONE, CW_OFFSET); // generate sidetone
-    keyDown = true;
-  }
-  else {
-    digitalWrite(CW_CARRIER, 0); // stop generating the carrier
-    noTone(CW_TONE); // stop generating the sidetone
-    if (space == 0) {
-      space = millis();
+  if (key_type == 1) { // paddle not reversed
+
+    if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
+      digitalWrite(CW_CARRIER, 1); // generate carrier
+      tone(CW_TONE, CW_OFFSET); // generate sidetone
+      keyDown = true;
     }
-    if (millis() - space > gap * element) {
-      if (dit < dah) {
-        if (ditlatch || !digitalRead(KEY)) {
-          dit = millis();
-          keyeron = true;
-          ditlatch = false;
-          keyDown = true;
-          gap = 1; //standard gap between dits and dahs
-          space = 0;
-          released = 0;
+    else {
+      digitalWrite(CW_CARRIER, 0); // stop generating the carrier
+      noTone(CW_TONE); // stop generating the sidetone
+      if (space == 0) {
+        space = millis();
+      }
+      if (millis() - space > gap * element) {
+        if (dit < dah) {
+          if (ditlatch || !digitalRead(KEY)) {
+            dit = millis();
+            keyeron = true;
+            ditlatch = false;
+            keyDown = true;
+            gap = 1; //standard gap between dits and dahs
+            space = 0;
+            released = 0;
+          }
+          else {
+            if (dahlatch || !digitalRead(DAH)) {
+              dah = millis();
+              keyeron = true;
+              dahlatch = false;
+              keyDown = true;
+              gap = 1; //standard gap between dits and dahs
+              space = 0;
+              released = 0;
+            }
+            else {
+              gap = 3; // autospace - character gap is 3 times the length of a dit
+              keyeron = true;
+              keyDown = true;
+
+              if (millis() - space > gap * element) {
+                keyeron = false;
+                keyDown = false;
+                gap = 1; //standard gap between dits and dahs
+                space = 0;
+                released = 0;
+              }
+            }
+          }
         }
         else {
           if (dahlatch || !digitalRead(DAH)) {
@@ -793,32 +828,68 @@ void keyer() {
             released = 0;
           }
           else {
-            gap = 3; // autospace - character gap is 3 times the length of a dit
-            keyeron = true;
-            keyDown = true;
-
-            if (millis() - space > gap * element) {
-              keyeron = false;
-              keyDown = false;
+            if (ditlatch || !digitalRead(KEY)) {
+              dit = millis();
+              keyeron = true;
+              ditlatch = false;
+              keyDown = true;
               gap = 1; //standard gap between dits and dahs
               space = 0;
               released = 0;
             }
+            else {
+              gap = 3; // autospace - character gap is 3 times the length of a dit
+              keyeron = true;
+              keyDown = true;
+
+              if (millis() - space > gap * element) {
+                keyeron = false;
+                keyDown = false;
+                gap = 1; //standard gap between dits and dahs
+                space = 0;
+                released = 0;
+              }
+            }
           }
         }
       }
-      else {
-        if (dahlatch || !digitalRead(DAH)) {
-          dah = millis();
-          keyeron = true;
-          dahlatch = false;
-          keyDown = true;
-          gap = 1; //standard gap between dits and dahs
-          space = 0;
-          released = 0;
-        }
-        else {
-          if (ditlatch || !digitalRead(KEY)) {
+    }
+
+    if (released == 0) {
+      if (space == 0 && millis() - dit < element && digitalRead(KEY))
+        released = millis();
+      if (space == 0 && millis() - dah < 3 * element && digitalRead(DAH))
+        released = millis();
+      if (space > 0 && digitalRead(KEY) && digitalRead(DAH))
+        released = millis();
+    }
+
+    if (released > 0 && millis() - released > 15 && !digitalRead(KEY)) {
+      ditlatch = true;
+      dahlatch = false;
+    }
+    else if (released > 0 && millis() - released > 15 && !digitalRead(DAH)) {
+      dahlatch = true;
+      ditlatch = false;
+    }
+  }
+
+  else { // if paddle is reversed
+
+    if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
+      digitalWrite(CW_CARRIER, 1); // generate carrier
+      tone(CW_TONE, CW_OFFSET); // generate sidetone
+      keyDown = true;
+    }
+    else {
+      digitalWrite(CW_CARRIER, 0); // stop generating the carrier
+      noTone(CW_TONE); // stop generating the sidetone
+      if (space == 0) {
+        space = millis();
+      }
+      if (millis() - space > gap * element) {
+        if (dit < dah) {
+          if (ditlatch || !digitalRead(DAH)) {
             dit = millis();
             keyeron = true;
             ditlatch = false;
@@ -828,40 +899,87 @@ void keyer() {
             released = 0;
           }
           else {
-            gap = 3; // autospace - character gap is 3 times the length of a dit
-            keyeron = true;
-            keyDown = true;
-
-            if (millis() - space > gap * element) {
-              keyeron = false;
-              keyDown = false;
+            if (dahlatch || !digitalRead(KEY)) {
+              dah = millis();
+              keyeron = true;
+              dahlatch = false;
+              keyDown = true;
               gap = 1; //standard gap between dits and dahs
               space = 0;
               released = 0;
+            }
+            else {
+              gap = 3; // autospace - character gap is 3 times the length of a dit
+              keyeron = true;
+              keyDown = true;
+
+              if (millis() - space > gap * element) {
+                keyeron = false;
+                keyDown = false;
+                gap = 1; //standard gap between dits and dahs
+                space = 0;
+                released = 0;
+              }
+            }
+          }
+        }
+        else {
+          if (dahlatch || !digitalRead(KEY)) {
+            dah = millis();
+            keyeron = true;
+            dahlatch = false;
+            keyDown = true;
+            gap = 1; //standard gap between dits and dahs
+            space = 0;
+            released = 0;
+          }
+          else {
+            if (ditlatch || !digitalRead(DAH)) {
+              dit = millis();
+              keyeron = true;
+              ditlatch = false;
+              keyDown = true;
+              gap = 1; //standard gap between dits and dahs
+              space = 0;
+              released = 0;
+            }
+            else {
+              gap = 3; // autospace - character gap is 3 times the length of a dit
+              keyeron = true;
+              keyDown = true;
+
+              if (millis() - space > gap * element) {
+                keyeron = false;
+                keyDown = false;
+                gap = 1; //standard gap between dits and dahs
+                space = 0;
+                released = 0;
+              }
             }
           }
         }
       }
     }
+
+    if (released == 0) {
+      if (space == 0 && millis() - dit < element && digitalRead(DAH))
+        released = millis();
+      if (space == 0 && millis() - dah < 3 * element && digitalRead(KEY))
+        released = millis();
+      if (space > 0 && digitalRead(DAH) && digitalRead(KEY))
+        released = millis();
+    }
+
+    if (released > 0 && millis() - released > 15 && !digitalRead(DAH)) {
+      ditlatch = true;
+      dahlatch = false;
+    }
+    else if (released > 0 && millis() - released > 15 && !digitalRead(KEY)) {
+      dahlatch = true;
+      ditlatch = false;
+    }
   }
 
-  if (released == 0) {
-    if (space == 0 && millis() - dit < element && digitalRead(KEY))
-      released = millis();
-    if (space == 0 && millis() - dah < 3 * element && digitalRead(DAH))
-      released = millis();
-    if (space > 0 && digitalRead(KEY) && digitalRead(DAH))
-      released = millis();
-  }
-
-  if (released > 0 && millis() - released > 15 && !digitalRead(KEY)) {
-    ditlatch = true;
-    dahlatch = false;
-  }
-  else if (released > 0 && millis() - released > 15 && !digitalRead(DAH)) {
-    dahlatch = true;
-    ditlatch = false;
-  }
   if (keyeron) {
     itoa(wpm, b, DEC);
     strcpy(c, "CW-speed ");
@@ -1375,7 +1493,7 @@ void set_CWparams() {
         shift = current_setting - knob - 200;
         break;
       case 2:
-        current_setting = paddle;
+        current_setting = key_type;
         shift = knob;
         break;
       case 3:
@@ -1399,12 +1517,12 @@ void set_CWparams() {
         shift = shift + 10;
       break;
     case 2:
-      //generate values 0-1-0-1 from the tuning pot
-      paddle = ((((knob - shift) & 64) / 64) + current_setting) & 1;
+      //generate values 0-1-2-0-1-2 from the tuning pot
+      key_type = ((((knob - shift) + 4 + current_setting * 21) & 63 - 1) / 21);
       break;
     case 3:
       //generate values 0-1-0-1 from the tuning pot
-      semiQSK = ((((knob - shift) & 64) / 64) + current_setting) & 1;
+      semiQSK = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
       break;
     case 4:
       //generate values 10-1000 from the tuning pot
@@ -1427,7 +1545,7 @@ void set_CWparams() {
         delay(200);
         break;
       case 2:
-        EEPROM.put(38, paddle);
+        EEPROM.put(38, key_type);
         bleep(600, 50, 1);
         delay(200);
         break;
@@ -1474,11 +1592,13 @@ void set_CWparams() {
         strcat(c, " Hz");
         break;
       case 2:
-        strcpy(c, "CW-key: ");
-        if (paddle)
+        strcpy(c, "Key: ");
+        if (key_type == 0)
+          strcat(c, "straight");
+        else if (key_type == 1)
           strcat(c, "paddle");
         else
-          strcat(c, "straight");
+          strcat(c, "rev. paddle");
         break;
       case 3:
         strcpy(c, "Semi-QSK: ");
@@ -1950,9 +2070,10 @@ void factory_settings() {
   EEPROM.put(32, 1000); // scan_step_freq (1000 Hz)
   EEPROM.put(34, 500); // scan_step_delay (500 ms)
   EEPROM.put(36, 350); // CW timout (350 ms)
-  EEPROM.put(38, false); // straight key mode
+  EEPROM.put(38, 0); // straight key mode
   EEPROM.put(39, 7000000UL); // absolute minimum frequency
   EEPROM.put(43, 7300000UL); // absolute maximum frequency
+
   delay(1000);
 }
 
@@ -2032,8 +2153,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 21;
-  strcpy (c, "Raduino v1.21");
+  raduino_version = 22;
+  strcpy (c, "Raduino v1.22");
 
   lcd.begin(16, 2);
 
@@ -2105,7 +2226,7 @@ void setup() {
   EEPROM.get(32, scan_step_freq);
   EEPROM.get(34, scan_step_delay);
   EEPROM.get(36, QSK_DELAY);
-  EEPROM.get(38, paddle);
+  EEPROM.get(38, key_type);
   EEPROM.get(39, LOWEST_FREQ);
   EEPROM.get(43, HIGHEST_FREQ);
 
@@ -2189,6 +2310,8 @@ void loop() {
     case 4: // set CW parameters
       set_CWparams();
       checkCW();
+      if (keyeron)
+        keyer();
       break;
     case 5: // scan mode
       scan();
