@@ -1,6 +1,6 @@
-User instructions for Raduino_v1.22
+User instructions for Raduino_v1.23
 
-After the version update all calibration data, drive level settings, etc will be erased.
+After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
 
 10-TURN TUNING POT
@@ -13,7 +13,7 @@ Don't have a Function Button yet?
 If you don't install a pushbutton then the basic functions will still work.
 (of course you will miss the dual VFO, RIT, SPLIT, USB and CW capability then).
 Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
-The tuning range setting can be 'hard coded' by uncommenting line 2261 and adapting the value to your needs.
+The tuning range setting can be 'hard coded' by editing lines 34-36 and adapting the values to your needs.
 
 PIN LAYOUT
 https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png
@@ -36,10 +36,10 @@ keep the tune button pressed for too long to prevent overheating the final!
 
 AUTOMATIC KEYER - CONNECTING A PADDLE:
 The Raduino is set up for straight key operation by default. If you want to use the automatic keyer, go to the SETTINGS menu
-and to 'CW parameters' and select 'paddle' or 'rev. paddle' (for left-handed operators).
+and to 'CW parameters' => 'Key-type' and select 'paddle', 'rev. paddle' (for left-handed operators), 'bug', or 'rev. bug'.
 Connect the 'dit' contact to Raduino pin A1 (connector P1, brown wire).
 Connect the 'dah' contact to Raduino pin D3 (connector P3).
-The built-in keyer provides Iambic mode A functionality.
+The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality.
 
 CW-CARRIER WIRING:
 This is required for CW operation (or when you want to generate a carrier for tuning)
@@ -164,7 +164,9 @@ In the SETTINGS menu:
  - using the tuning pot, set the desired sidetone pitch
  - press the FB
  - using the tuning pot, select "straight" for straight CW key operation, "paddle" for automatic CW keyer,
-   or "rev. paddle" for left-handed CW-operators.
+   "rev. paddle" for left-handed CW-operators, "bug", or "rev. bug".
+ - press the FB
+ - using the tuning pot, select Auto-space ON or OFF
  - press the FB
  - using the tuning pot, select semiQSK ON or OFF
  - press the FB
@@ -187,13 +189,17 @@ long press (>1 second) - return to the NORMAL mode
 All user settings are stored in EEPROM and retrieved during startup.
 
 When you keep the Fbutton pressed during power on all user settings will be erased and set back to "factory" values:
-VFO calibration (LSB): 0
-VFO offset (USB): 1500 Hz
+VFO calibration offset (LSB): 0
+VFO calibration offset (USB): 1500 Hz
 VFO drive level (LSB): 4mA
 VFO drive level (USB): 8mA
-Tuning pot range: 50 kHz
+Minimum frequency: 7000 kHz
+Maximum frequency: 7300 kHz
+Tuning pot span: 50 kHz
 Mode LSB for both VFO A and B
 CW side tone: 800 Hz
+CW key-type: Straight key
+Auto-space: OFF
 semiQSK: ON
 QSK delay: 350 ms
 Lower scan limit: 7100 kHz
