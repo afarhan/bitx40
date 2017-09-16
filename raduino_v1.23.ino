@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.22 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.23 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -18,6 +18,51 @@
    and code to continuously sense the tuning knob, the function button, transmit/receive,
    etc is all in the loop() function. If you wish to study the code top down, then scroll
    to the bottom of this file and read your way up.
+
+   First we define all user parameters. The parameter values can be changed by the user
+   via SETTINGS menu, and are stored in EEPROM.
+   The parameters values will be set to initial 'factory' settings after each
+   version upgrade, or when the Function Button is kept pressed during power on.
+   It is also possible to manually edit the values below. After that, initialize the
+   settings to the new values by keeping the F-Button pressed during power on, or by
+   switching the CAL wire to ground.
+*/
+
+// *** USER PARAMETERS ***
+
+// tuning range parameters
+#define MIN_FREQ 7000000UL        // absolute minimum tuning frequency in Hz
+#define MAX_FREQ 7300000UL        // absolute maximum tuning frequency in Hz
+#define TUNING_POT_SPAN 50        // tuning pot span in kHz [accepted range 10-500 kHz]
+// recommended pot span for a 1-turn pot: 50kHz, for a 10-turn pot: 100 to 200kHz
+// recommended pot span when radio is used mainly for CW: 10 to 25 kHz
+
+// USB/LSB parameters
+#define OFFSET_LSB 0              // LSB offset in Hz [accepted range -10000Hz to 10000Hz]
+#define OFFSET_USB 1500           // USB offset in Hz [accepted range -10000Hz to 10000Hz]
+#define VFO_DRIVE_LSB 4           // VFO drive level in LSB mode in mA [accepted values 2,4,6,8 mA]
+#define VFO_DRIVE_USB 8           // VFO drive level in USB mode in mA [accepted values 2,4,6,8 mA]
+
+// CW parameters
+#define CW_SHIFT 800              // RX shift in CW mode in Hz, equal to sidetone pitch [accepted range 200-1200 Hz]
+#define SEMI_QSK true             // whether we use semi-QSK (true) or manual PTT (false)
+#define CW_TIMEOUT 350            // time delay in ms before radio goes back to receive [accepted range 10-1000 ms]
+
+// CW keyer parameters
+#define CW_KEY_TYPE 0             // type of CW-key: 0 (straight key), 1 (paddle), 2 (reverse paddle)
+#define CW_SPEED 16               // CW keyer speed in words per minute [accepted range 1-50 WPM]
+#define AUTOSPACE false            // whether or not auto-space is enabled [accepted values: true or false]
+
+// frequency scanning parameters
+#define SCAN_START 7100           // Scan start frequency in kHz [accepted range MIN_FREQ - MAX_FREQ, see above]
+#define SCAN_STOP 7150            // Scan start frequency in kHz [accepted range SCAN_START - MAX_FREQ, see above]
+#define SCAN_STEP 1000            // Scan step size in Hz [accepted range 50Hz to 10000Hz]
+#define SCAN_STEP_DELAY 500       // Scan step delay in ms [accepted range 0-2000 ms]
+
+// Function Button
+#define CLICK_DELAY 500           // max time (in ms) between function button clicks
+
+/**
 
    Below are the libraries to be included for building the Raduino
 
@@ -228,10 +273,23 @@ unsigned long released = 0;
 bool ditlatch = false;
 bool dahlatch = false;
 byte wpm; // keyer speed (words per minute) (value is set in the SETTINGS menu)
-byte gap = 1;
+byte gap = 1; // space between elements or characters
+bool autospace = false;
 unsigned long dit;
 unsigned long dah;
 unsigned long space = 0;
+
+/**
+    Tks Pavel CO7WT:
+    Use pointers for reversing the behaviour of the dit/dah paddles, this way we can simply
+    refer to them as two paddles regardless it's normal or reversed
+    Macros don't like pointers, so we create two byte vars to hold the values
+**/
+
+byte _key = KEY;
+byte _dah = DAH;
+byte *paddleDIT = &_key; // Paddle DIT bind to KEY
+byte *paddleDAH = &_dah; // Paddle DAH bind to DAH
 
 /** Tuning Mechanism of the Raduino
     We use a linear pot that has two ends connected to +5 and the ground. the middle wiper
@@ -669,18 +727,24 @@ void checkCW() {
     if (key_type > 0) { // if we are using the keyer
       keyeron = true;
       released = 0;
-      if (key_type == 1) { // paddle not reversed
-        if (!digitalRead(KEY))
-          dit = millis();
-        if (!digitalRead(DAH))
-          dah = millis();
+
+      // put the paddles pointers in the correct position
+      //if (key_type == 1 || key_type == 3) {
+      if (key_type & 1) {
+        // paddle not reversed
+        paddleDAH = &_dah;
+        paddleDIT = &_key;
       }
-      else { // paddle is reversed
-        if (!digitalRead(DAH))
-          dit = millis();
-        if (!digitalRead(KEY))
-          dah = millis();
+      else {
+        // paddle reversed
+        paddleDAH = &_key;
+        paddleDIT = &_dah;
       }
+
+      if (!digitalRead(*paddleDIT))
+        dit = millis();
+      if (!digitalRead(*paddleDAH))
+        dah = millis();
     }
 
     if (!inTx && semiQSK) {     //switch to transmit mode if we are not already in it
@@ -766,59 +830,39 @@ void keyer() {
     EEPROM.put(1, wpm);
   }
 
+  if (key_type > 2) { // bug mode
+    if (!digitalRead(*paddleDAH))
+      dah = millis();
+    else
+      dah = 0;
+  }
+
   unsigned long element = 1200UL / wpm;
 
-  if (key_type == 1) { // paddle not reversed
-
-    if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
-      digitalWrite(CW_CARRIER, 1); // generate carrier
-      tone(CW_TONE, CW_OFFSET); // generate sidetone
-      keyDown = true;
+  if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
+    digitalWrite(CW_CARRIER, 1); // generate carrier
+    tone(CW_TONE, CW_OFFSET); // generate sidetone
+    keyDown = true;
+  }
+  else {
+    digitalWrite(CW_CARRIER, 0); // stop generating the carrier
+    noTone(CW_TONE); // stop generating the sidetone
+    if (space == 0) {
+      space = millis();
     }
-    else {
-      digitalWrite(CW_CARRIER, 0); // stop generating the carrier
-      noTone(CW_TONE); // stop generating the sidetone
-      if (space == 0) {
-        space = millis();
-      }
-      if (millis() - space > gap * element) {
-        if (dit < dah) {
-          if (ditlatch || !digitalRead(KEY)) {
-            dit = millis();
-            keyeron = true;
-            ditlatch = false;
-            keyDown = true;
-            gap = 1; //standard gap between dits and dahs
-            space = 0;
-            released = 0;
-          }
-          else {
-            if (dahlatch || !digitalRead(DAH)) {
-              dah = millis();
-              keyeron = true;
-              dahlatch = false;
-              keyDown = true;
-              gap = 1; //standard gap between dits and dahs
-              space = 0;
-              released = 0;
-            }
-            else {
-              gap = 3; // autospace - character gap is 3 times the length of a dit
-              keyeron = true;
-              keyDown = true;
-
-              if (millis() - space > gap * element) {
-                keyeron = false;
-                keyDown = false;
-                gap = 1; //standard gap between dits and dahs
-                space = 0;
-                released = 0;
-              }
-            }
-          }
+    if (millis() - space > gap * element) {
+      if (dit < dah) {
+        if (ditlatch || !digitalRead(*paddleDIT)) {
+          dit = millis();
+          keyeron = true;
+          ditlatch = false;
+          keyDown = true;
+          gap = 1; //standard gap between dits and dahs
+          space = 0;
+          released = 0;
         }
         else {
-          if (dahlatch || !digitalRead(DAH)) {
+          if (dahlatch || !digitalRead(*paddleDAH)) {
             dah = millis();
             keyeron = true;
             dahlatch = false;
@@ -828,68 +872,33 @@ void keyer() {
             released = 0;
           }
           else {
-            if (ditlatch || !digitalRead(KEY)) {
-              dit = millis();
-              keyeron = true;
-              ditlatch = false;
-              keyDown = true;
+            if (autospace)
+              gap = 3; // autospace - character gap is 3 times the length of a dit
+            keyeron = true;
+            keyDown = true;
+
+            if (millis() - space > gap * element) {
+              keyeron = false;
+              keyDown = false;
               gap = 1; //standard gap between dits and dahs
               space = 0;
               released = 0;
             }
-            else {
-              gap = 3; // autospace - character gap is 3 times the length of a dit
-              keyeron = true;
-              keyDown = true;
-
-              if (millis() - space > gap * element) {
-                keyeron = false;
-                keyDown = false;
-                gap = 1; //standard gap between dits and dahs
-                space = 0;
-                released = 0;
-              }
-            }
           }
         }
       }
-    }
-
-    if (released == 0) {
-      if (space == 0 && millis() - dit < element && digitalRead(KEY))
-        released = millis();
-      if (space == 0 && millis() - dah < 3 * element && digitalRead(DAH))
-        released = millis();
-      if (space > 0 && digitalRead(KEY) && digitalRead(DAH))
-        released = millis();
-    }
-
-    if (released > 0 && millis() - released > 15 && !digitalRead(KEY)) {
-      ditlatch = true;
-      dahlatch = false;
-    }
-    else if (released > 0 && millis() - released > 15 && !digitalRead(DAH)) {
-      dahlatch = true;
-      ditlatch = false;
-    }
-  }
-
-  else { // if paddle is reversed
-
-    if (space == 0 && (millis() - dit < element || millis() - dah < 3 * element)) {
-      digitalWrite(CW_CARRIER, 1); // generate carrier
-      tone(CW_TONE, CW_OFFSET); // generate sidetone
-      keyDown = true;
-    }
-    else {
-      digitalWrite(CW_CARRIER, 0); // stop generating the carrier
-      noTone(CW_TONE); // stop generating the sidetone
-      if (space == 0) {
-        space = millis();
-      }
-      if (millis() - space > gap * element) {
-        if (dit < dah) {
-          if (ditlatch || !digitalRead(DAH)) {
+      else {
+        if (dahlatch || !digitalRead(*paddleDAH)) {
+          dah = millis();
+          keyeron = true;
+          dahlatch = false;
+          keyDown = true;
+          gap = 1; //standard gap between dits and dahs
+          space = 0;
+          released = 0;
+        }
+        else {
+          if (ditlatch || !digitalRead(*paddleDIT)) {
             dit = millis();
             keyeron = true;
             ditlatch = false;
@@ -899,86 +908,41 @@ void keyer() {
             released = 0;
           }
           else {
-            if (dahlatch || !digitalRead(KEY)) {
-              dah = millis();
-              keyeron = true;
-              dahlatch = false;
-              keyDown = true;
-              gap = 1; //standard gap between dits and dahs
-              space = 0;
-              released = 0;
-            }
-            else {
+            if (autospace)
               gap = 3; // autospace - character gap is 3 times the length of a dit
-              keyeron = true;
-              keyDown = true;
-
-              if (millis() - space > gap * element) {
-                keyeron = false;
-                keyDown = false;
-                gap = 1; //standard gap between dits and dahs
-                space = 0;
-                released = 0;
-              }
-            }
-          }
-        }
-        else {
-          if (dahlatch || !digitalRead(KEY)) {
-            dah = millis();
             keyeron = true;
-            dahlatch = false;
             keyDown = true;
-            gap = 1; //standard gap between dits and dahs
-            space = 0;
-            released = 0;
-          }
-          else {
-            if (ditlatch || !digitalRead(DAH)) {
-              dit = millis();
-              keyeron = true;
-              ditlatch = false;
-              keyDown = true;
+            if (millis() - space > gap * element) {
+              keyeron = false;
+              keyDown = false;
               gap = 1; //standard gap between dits and dahs
               space = 0;
               released = 0;
-            }
-            else {
-              gap = 3; // autospace - character gap is 3 times the length of a dit
-              keyeron = true;
-              keyDown = true;
-
-              if (millis() - space > gap * element) {
-                keyeron = false;
-                keyDown = false;
-                gap = 1; //standard gap between dits and dahs
-                space = 0;
-                released = 0;
-              }
             }
           }
         }
       }
     }
-
-    if (released == 0) {
-      if (space == 0 && millis() - dit < element && digitalRead(DAH))
-        released = millis();
-      if (space == 0 && millis() - dah < 3 * element && digitalRead(KEY))
-        released = millis();
-      if (space > 0 && digitalRead(DAH) && digitalRead(KEY))
-        released = millis();
-    }
-
-    if (released > 0 && millis() - released > 15 && !digitalRead(DAH)) {
-      ditlatch = true;
-      dahlatch = false;
-    }
-    else if (released > 0 && millis() - released > 15 && !digitalRead(KEY)) {
-      dahlatch = true;
-      ditlatch = false;
-    }
   }
+
+  if (released == 0) {
+    if (space == 0 && millis() - dit < element && digitalRead(*paddleDIT))
+      released = millis();
+    if (space == 0 && millis() - dah < 3 * element && digitalRead(*paddleDAH))
+      released = millis();
+    if (space > 0 && digitalRead(*paddleDIT) && digitalRead(*paddleDAH))
+      released = millis();
+  }
+
+  if (released > 0 && millis() - released > 15 && !digitalRead(*paddleDIT)) {
+    ditlatch = true;
+    dahlatch = false;
+  }
+  else if (released > 0 && millis() - released > 15 && !digitalRead(*paddleDAH)) {
+    dahlatch = true;
+    ditlatch = false;
+  }
+
 
   if (keyeron) {
     itoa(wpm, b, DEC);
@@ -1034,7 +998,7 @@ void checkButton() {
         clicks = 0;
       }
 
-    if (t2 > 500) { // max time between button clicks (ms)
+    if (t2 > CLICK_DELAY) { // max time between button clicks (ms)
       action = clicks;
       if (clicks >= 10)
         clicks = 10;
@@ -1497,10 +1461,14 @@ void set_CWparams() {
         shift = knob;
         break;
       case 3:
-        current_setting = semiQSK;
+        current_setting = autospace;
         shift = knob;
         break;
       case 4:
+        current_setting = semiQSK;
+        shift = knob;
+        break;
+      case 5:
         current_setting = QSK_DELAY;
         shift = current_setting - 10 * (knob / 10);
         break;
@@ -1517,14 +1485,18 @@ void set_CWparams() {
         shift = shift + 10;
       break;
     case 2:
-      //generate values 0-1-2-0-1-2 from the tuning pot
-      key_type = ((((knob - shift) + 4 + current_setting * 21) & 63 - 1) / 21);
+      //generate values 0-1-2-3-4 from the tuning pot
+      key_type = ((((knob - shift) + 4 + current_setting * 26) & 127) / 26);
       break;
     case 3:
       //generate values 0-1-0-1 from the tuning pot
-      semiQSK = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
+      autospace = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
       break;
     case 4:
+      //generate values 0-1-0-1 from the tuning pot
+      semiQSK = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
+      break;
+    case 5:
       //generate values 10-1000 from the tuning pot
       QSK_DELAY = constrain(10 * (knob / 10) + shift, 10, 1000);
       if (knob < 5 && QSK_DELAY >= 20)
@@ -1548,8 +1520,15 @@ void set_CWparams() {
         EEPROM.put(38, key_type);
         bleep(600, 50, 1);
         delay(200);
+        if (key_type == 0)
+          param++;
         break;
       case 3:
+        EEPROM.put(46, autospace);
+        bleep(600, 50, 1);
+        delay(200);
+        break;
+      case 4:
         EEPROM.put(8, semiQSK);
         if (semiQSK) {
           bleep(600, 50, 1);
@@ -1566,7 +1545,7 @@ void set_CWparams() {
           shiftBase(); //align the current knob position with the current frequency
         }
         break;
-      case 4:
+      case 5:
         //Write the 2 bytes of the CW Timout into the eeprom memory.
         EEPROM.put(36, QSK_DELAY);
         printLine(1, (char *)"CW params set!");
@@ -1593,21 +1572,39 @@ void set_CWparams() {
         break;
       case 2:
         strcpy(c, "Key: ");
-        if (key_type == 0)
-          strcat(c, "straight");
-        else if (key_type == 1)
-          strcat(c, "paddle");
-        else
-          strcat(c, "rev. paddle");
+        switch (key_type) {
+          case 0:
+            strcat(c, "straight");
+            break;
+          case 1:
+            strcat(c, "paddle");
+            break;
+          case 2:
+            strcat(c, "rev. paddle");
+            break;
+          case 3:
+            strcat(c, "bug");
+            break;
+          case 4:
+            strcat(c, "rev. bug");
+            break;
+        }
         break;
       case 3:
+        strcpy(c, "Auto-space: ");
+        if (autospace)
+          strcat(c, "ON");
+        else
+          strcat(c, "OFF");
+        break;
+      case 4:
         strcpy(c, "Semi-QSK: ");
         if (semiQSK)
           strcat(c, "ON");
         else
           strcat(c, "OFF");
         break;
-      case 4:
+      case 5:
         itoa(QSK_DELAY, b, DEC);
         strcpy(c, "QSK delay ");
         strcat(c, b);
@@ -2048,31 +2045,33 @@ void finetune() {
 byte raduino_version; //version identifier
 
 void factory_settings() {
+
   printLine(0, (char *)"loading standard");
   printLine(1, (char *)"settings...");
   EEPROM.put(0, raduino_version); //version identifier
-  EEPROM.put(1, 16); //CW keyer speed
-  EEPROM.put(2, 0); //LSB offset value (0 Hz)
-  EEPROM.put(4, 1500); //USB offset (1500 Hz)
-  EEPROM.put(6, 4); //VFO drive level in LSB/CWL mode (4 mA)
-  EEPROM.put(7, 8); //VFO drive level in USB/CWU mode (8 mA)
-  EEPROM.put(8, true); // T/R is semi QSK
-  EEPROM.put(10, 50); //tuning pot span (50 kHz)
-  EEPROM.put(12, 800); //CW offset / sidetone pitch (800 Hz)
-  EEPROM.put(16, 7125000UL); // VFO A frequency (7125 kHz)
-  EEPROM.put(20, 7125000UL); // VFO B frequency (7125 kHz)
-  EEPROM.put(24, 0); // mode VFO A (LSB)
-  EEPROM.put(25, 0); // mode VFO B (LSB)
-  EEPROM.put(26, false); // vfoActive (VFO A)
-  EEPROM.put(27, false); // SPLIT off
-  EEPROM.put(28, 7100); // scan_start_freq (7100 kHz)
-  EEPROM.put(30, 7150); // scan_stop_freq (7150 kHz)
-  EEPROM.put(32, 1000); // scan_step_freq (1000 Hz)
-  EEPROM.put(34, 500); // scan_step_delay (500 ms)
-  EEPROM.put(36, 350); // CW timout (350 ms)
-  EEPROM.put(38, 0); // straight key mode
-  EEPROM.put(39, 7000000UL); // absolute minimum frequency
-  EEPROM.put(43, 7300000UL); // absolute maximum frequency
+  EEPROM.put(1, CW_SPEED); //CW keyer speed
+  EEPROM.put(2, OFFSET_LSB); //LSB offset value
+  EEPROM.put(4, OFFSET_USB); //USB offset
+  EEPROM.put(6, VFO_DRIVE_LSB); //VFO drive level in LSB/CWL mode
+  EEPROM.put(7, VFO_DRIVE_USB); //VFO drive level in USB/CWU mode
+  EEPROM.put(8, SEMI_QSK); // semi QSK
+  EEPROM.put(10, TUNING_POT_SPAN); //tuning pot span
+  EEPROM.put(12, CW_SHIFT); //CW offset / sidetone pitch
+  EEPROM.put(16, 7125000UL); // initial VFO A frequency (7125 kHz)
+  EEPROM.put(20, 7125000UL); // initial VFO B frequency (7125 kHz)
+  EEPROM.put(24, 0); // initial mode VFO A (LSB)
+  EEPROM.put(25, 0); // initial mode VFO B (LSB)
+  EEPROM.put(26, false); // initial vfoActive (VFO A)
+  EEPROM.put(27, false); // SPLIT initially off
+  EEPROM.put(28, SCAN_START); // scan_start_freq
+  EEPROM.put(30, SCAN_STOP); // scan_stop_freq
+  EEPROM.put(32, SCAN_STEP); // scan_step_freq
+  EEPROM.put(34, SCAN_STEP_DELAY); // scan_step_delay
+  EEPROM.put(36, CW_TIMEOUT); // CW timout
+  EEPROM.put(38, CW_KEY_TYPE); // CW key type
+  EEPROM.put(39, MIN_FREQ); // absolute minimum frequency
+  EEPROM.put(43, MAX_FREQ); // absolute maximum frequency
+  EEPROM.put(46, AUTOSPACE); // CW keyer autospace ON/OFF
 
   delay(1000);
 }
@@ -2153,8 +2152,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 22;
-  strcpy (c, "Raduino v1.22");
+  raduino_version = 23;
+  strcpy (c, "Raduino v1.23");
 
   lcd.begin(16, 2);
 
@@ -2229,6 +2228,7 @@ void setup() {
   EEPROM.get(38, key_type);
   EEPROM.get(39, LOWEST_FREQ);
   EEPROM.get(43, HIGHEST_FREQ);
+  EEPROM.get(46, autospace);
 
   //initialize the SI5351
   si5351bx_init();
@@ -2254,14 +2254,6 @@ void setup() {
     RXshift = CW_OFFSET;
 
   shiftBase(); //align the current knob position with the current frequency
-
-  //If no FButton is installed, and you still want to use custom tuning pot span settings,
-  //uncomment (remove the two slashes) the following line and adapt the value as desired:
-
-  //POT_SPAN = 50;    // tuning pot span (in kHz) from lower end to upper end of the tuning pot
-
-  //recommended pot span for a 1-turn pot: 50kHz, for a 10-turn pot: 100-200kHz
-  //recommended pot span when radio is used mainly for CW: 10-25 kHz
 
   bleep(CW_OFFSET, 60, 3);
   bleep(CW_OFFSET, 180, 1);
