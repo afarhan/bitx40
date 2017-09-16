@@ -12,6 +12,12 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.23
+- It is now possible to enable/disable the keyer's auto-space function from the SETTINGS menu
+- Added Vibroplex bug emulation to the CW keyer
+- Moved all user setting parameters to the top of the sketch for in case you want to edit them manually
+- Optimized some code in the keyer routine (tks Pavel CO7WT)
+
 v1.22
 - Added some functionality allowing the user to choose "paddle" or "reversed paddle" from the SETTINGS menu
 
