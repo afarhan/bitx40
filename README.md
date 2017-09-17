@@ -12,6 +12,10 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.23.1
+- corrected bug that the 'auto-space' setting interfered with the 'maximum frequency' setting due to incorrect EEPROM location
+- corrected bug that the display became cluttered up in the SETTINGS menu (CW parameters), when CW key was down
+
 v1.23
 - It is now possible to enable/disable the keyer's auto-space function from the SETTINGS menu (default setting is OFF).
 - Added Vibroplex bug emulation to the CW keyer
