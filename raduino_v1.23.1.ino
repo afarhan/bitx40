@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.23 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.23.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -221,6 +221,7 @@ bool vfoActive; // which VFO (false=A or true=B) is active
 byte mode_A, mode_B; // the mode of each VFO
 
 bool firstrun = true;
+char clicks; // counter for function button clicks 
 
 /**
    We need to apply some frequency offset to calibrate the dial frequency. Calibration is done in LSB mode.
@@ -951,8 +952,10 @@ void keyer() {
     strcat(c, " WPM");
     printLine(1, c);
   }
-  else
+  else if (clicks < 10)
     printLine(1, (char *)" ");
+  else
+    printLine(1, (char *)"--- SETTINGS ---");
 }
 
 
@@ -980,7 +983,6 @@ byte param;
    7 short presses: Set the 4 scan parameters (lower limit, upper limit, step size, step delay)
    long press: exit SETTINGS menu - go back to NORMAL menu
 */
-char clicks;
 
 void checkButton() {
 
@@ -1524,7 +1526,7 @@ void set_CWparams() {
           param++;
         break;
       case 3:
-        EEPROM.put(46, autospace);
+        EEPROM.put(47, autospace);
         bleep(600, 50, 1);
         delay(200);
         break;
@@ -2071,7 +2073,7 @@ void factory_settings() {
   EEPROM.put(38, CW_KEY_TYPE); // CW key type
   EEPROM.put(39, MIN_FREQ); // absolute minimum frequency
   EEPROM.put(43, MAX_FREQ); // absolute maximum frequency
-  EEPROM.put(46, AUTOSPACE); // CW keyer autospace ON/OFF
+  EEPROM.put(47, AUTOSPACE); // CW keyer autospace ON/OFF
 
   delay(1000);
 }
@@ -2152,8 +2154,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 23;
-  strcpy (c, "Raduino v1.23");
+  raduino_version = 231;
+  strcpy (c, "Raduino v1.23.1");
 
   lcd.begin(16, 2);
 
@@ -2228,7 +2230,7 @@ void setup() {
   EEPROM.get(38, key_type);
   EEPROM.get(39, LOWEST_FREQ);
   EEPROM.get(43, HIGHEST_FREQ);
-  EEPROM.get(46, autospace);
+  EEPROM.get(47, autospace);
 
   //initialize the SI5351
   si5351bx_init();
