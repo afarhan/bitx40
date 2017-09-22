@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.23.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.24 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -51,7 +51,9 @@
 // CW keyer parameters
 #define CW_KEY_TYPE 0             // type of CW-key: 0 (straight key), 1 (paddle), 2 (reverse paddle)
 #define CW_SPEED 16               // CW keyer speed in words per minute [accepted range 1-50 WPM]
-#define AUTOSPACE false            // whether or not auto-space is enabled [accepted values: true or false]
+#define AUTOSPACE false           // whether or not auto-space is enabled [accepted values: true or false]
+#define DIT_DELAY 5               // debounce delay (ms) for DIT contact (affects the DIT paddle sensitivity)
+#define DAH_DELAY 15              // debounce delay (ms) for DAH contact (affects the DAH paddle sensitivity)
 
 // frequency scanning parameters
 #define SCAN_START 7100           // Scan start frequency in kHz [accepted range MIN_FREQ - MAX_FREQ, see above]
@@ -221,7 +223,9 @@ bool vfoActive; // which VFO (false=A or true=B) is active
 byte mode_A, mode_B; // the mode of each VFO
 
 bool firstrun = true;
-char clicks; // counter for function button clicks 
+char clicks; // counter for function button clicks
+bool locked = false;
+byte param;
 
 /**
    We need to apply some frequency offset to calibrate the dial frequency. Calibration is done in LSB mode.
@@ -457,18 +461,27 @@ void updateDisplay() {
   memset(c, 0, sizeof(c));
   memset(b, 0, sizeof(b));
 
-  ultoa((frequency + 50), b, DEC);
+  if (locked || RUNmode == RUN_FINETUNING) {
+    ultoa((frequency + fine), b, DEC);
+    strcpy(c, "");
+    c[0] = b[0];
+  }
+  else {
+    ultoa((frequency + 50), b, DEC);
+    if (!vfoActive) // VFO A is active
+      strcpy(c, "A ");
+    else
+      strcpy(c, "B ");
+    c[2] = b[0];
+  }
 
-  if (!vfoActive) // VFO A is active
-    strcpy(c, "A ");
-  else
-    strcpy(c, "B ");
-
-  c[2] = b[0];
   strcat(c, ".");
   strncat(c, &b[1], 3);
   strcat(c, ".");
-  strncat(c, &b[4], 1);
+  if (locked || RUNmode == RUN_FINETUNING)
+    strncat(c, &b[4], 3); // show two more digits
+  else
+    strncat(c, &b[4], 1);
 
   switch (mode) {
     case LSB:
@@ -490,7 +503,6 @@ void updateDisplay() {
   else if (splitOn)
     strcat(c, " SP");
 
-  //printLine1(c);
   printLine(0, c);
 }
 
@@ -730,7 +742,6 @@ void checkCW() {
       released = 0;
 
       // put the paddles pointers in the correct position
-      //if (key_type == 1 || key_type == 3) {
       if (key_type & 1) {
         // paddle not reversed
         paddleDAH = &_dah;
@@ -935,15 +946,14 @@ void keyer() {
       released = millis();
   }
 
-  if (released > 0 && millis() - released > 15 && !digitalRead(*paddleDIT)) {
+  if (released > 0 && millis() - released > DIT_DELAY && !digitalRead(*paddleDIT)) { // DIT_DELAY optimized timing characteristics - tks Hidehiko, JA9MAT
     ditlatch = true;
     dahlatch = false;
   }
-  else if (released > 0 && millis() - released > 15 && !digitalRead(*paddleDAH)) {
+  else if (space > 0 & released > 0 && millis() - released > DAH_DELAY && !digitalRead(*paddleDAH)) { // DAH_DELAY optimized timing characteristics - tks Hidehiko, JA9MAT
     dahlatch = true;
     ditlatch = false;
   }
-
 
   if (keyeron) {
     itoa(wpm, b, DEC);
@@ -952,14 +962,15 @@ void keyer() {
     strcat(c, " WPM");
     printLine(1, c);
   }
-  else if (clicks < 10)
-    printLine(1, (char *)" ");
-  else
-    printLine(1, (char *)"--- SETTINGS ---");
+  else if (locked)
+    printLine(1, (char *)"dial is locked");
+  else {
+    if (clicks < 10)
+      printLine(1, (char *)" ");
+    else
+      printLine(1, (char *)"--- SETTINGS ---");
+  }
 }
-
-
-byte param;
 
 /**
    The Function Button is used for several functions
@@ -1013,6 +1024,31 @@ void checkButton() {
     delay(10);
     if (!digitalRead(FBUTTON)) {
       // button was really pressed, not just some noise
+
+      if (locked && digitalRead(SPOT)) {
+        bleep(600, 50, 1);
+        printLine(1, (char *)"");
+        delay(500);
+        locked = false;
+        shiftBase();
+        clicks = 0;
+        pressed = false;
+        return;
+      }
+
+      else {
+        if (!digitalRead(SPOT)) {
+          bleep(1200, 50, 1);
+          locked = true;
+          updateDisplay();
+          printLine(1, (char *)"dial is locked");
+          delay(500);
+          clicks = 0;
+          pressed = false;
+          return;
+        }
+      }
+
       if (ritOn) {
         toggleRIT(); // disable the RIT when it was on and the FB is pressed again
         old_knob = knob_position();
@@ -1520,6 +1556,7 @@ void set_CWparams() {
         break;
       case 2:
         EEPROM.put(38, key_type);
+        //Write 1 byte of the key-type into the eeprom memory.
         bleep(600, 50, 1);
         delay(200);
         if (key_type == 0)
@@ -1527,11 +1564,13 @@ void set_CWparams() {
         break;
       case 3:
         EEPROM.put(47, autospace);
+        //Write 1 byte of autospace into the eeprom memory.
         bleep(600, 50, 1);
         delay(200);
         break;
       case 4:
         EEPROM.put(8, semiQSK);
+        //Write 1 byte of semiQSK into the eeprom memory.
         if (semiQSK) {
           bleep(600, 50, 1);
           delay(200);
@@ -1539,6 +1578,7 @@ void set_CWparams() {
         else {
           QSK_DELAY = 10; // set CW timeout to minimum when manual PTT is selected
           EEPROM.put(36, QSK_DELAY);
+          //Write 2 bytes of the CW timeout into the eeprom memory.
           printLine(1, (char *)"CW params set!");
           RUNmode = RUN_NORMAL;
           delay(700);
@@ -1867,13 +1907,13 @@ void doTuning() {
   int knob = analogRead(ANALOG_TUNING) * 100000 / 10230; // get the current tuning knob position
 
   // tuning is disabled during TX (only when PTT sense line is installed)
-  if (inTx && (clicks < 10) && (abs(knob - old_knob) > 20)) {
+  if (inTx && clicks < 10 && abs(knob - old_knob) > 20 && !locked) {
     printLine(1, (char *)"dial is locked");
     shiftBase();
     firstrun = true;
     return;
   }
-  else if (inTx)
+  else if (inTx || locked)
     return;
 
   knob = knob_position(); // get the precise tuning knob position
@@ -1970,7 +2010,7 @@ void finetune() {
   int knob = knob_position(); // get the current tuning knob position
   static int fine_old;
 
-  if (digitalRead(SPOT) == LOW && !inTx) {
+  if (digitalRead(SPOT) == LOW && !inTx && !locked) {
     if (firstrun) {
       firstrun = false;
       fine = 0;
@@ -1987,40 +2027,9 @@ void finetune() {
 
     if (fine != fine_old) {
       setFrequency(frequency); // apply the finetuning offset
-
-      memset(c, 0, sizeof(c));
-      memset(b, 0, sizeof(b));
-
-      ultoa((frequency + fine), b, DEC);
-
-      if (!vfoActive) // VFO A is active
-        strcpy(c, "A ");
-      else
-        strcpy(c, "B ");
-
-      c[2] = b[0];
-      strcat(c, ".");
-      strncat(c, &b[1], 3);
-      strcat(c, ".");
-      strncat(c, &b[4], 3); // show two more digits
-
-      switch (mode) {
-        case LSB:
-          strcat(c, " LSB");
-          break;
-        case USB:
-          strcat(c, " USB");
-          break;
-        case CWL:
-          strcat(c, " CWL");
-          break;
-        case CWU:
-          strcat(c, " CWU");
-          break;
-      }
+      updateDisplay();
     }
 
-    printLine(0, c);
     if (mode & 2)
       printLine(1, (char *)"SPOT + FINE TUNE");
     else
@@ -2121,7 +2130,7 @@ void scan() {
 
   int knob = knob_position();
 
-  if (abs(knob - old_knob) > 8 || (digitalRead(PTT_SENSE) && PTTsense_installed) || !digitalRead(FBUTTON) || !digitalRead(KEY)) {
+  if (abs(knob - old_knob) > 8 || (digitalRead(PTT_SENSE) && PTTsense_installed) || !digitalRead(FBUTTON) || !digitalRead(KEY) || !digitalRead(SPOT)) {
     //stop scanning
     TimeOut = 0; // reset the timeout counter
     RUNmode = RUN_NORMAL;
@@ -2154,8 +2163,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 231;
-  strcpy (c, "Raduino v1.23.1");
+  raduino_version = 24;
+  strcpy (c, "Raduino v1.24");
 
   lcd.begin(16, 2);
 
@@ -2277,8 +2286,8 @@ void loop() {
           checkButton();
           checkSPOT();
           save_frequency();
-          if (clicks == 0 && !ritOn)
-            printLine(1, (char *)" ");
+          if (clicks == 0 && !ritOn && !locked)
+            printLine(1, (char *)"");
         }
         if (PTTsense_installed) {
           checkCW();
