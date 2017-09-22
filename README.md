@@ -12,6 +12,11 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.24
+- Optimized CW keyer timing characteristics for smoother keying (tks Hidehiko, JA9MAT)
+- Added DIAL LOCK function
+  Press the Function Button and then the SPOT button simultanuously to lock the dial. Press the FB again to unlock.
+
 v1.23.1
 - corrected bug that the 'auto-space' setting interfered with the 'maximum frequency' setting due to incorrect EEPROM location
 - corrected bug that the display became cluttered up in the SETTINGS menu (CW parameters), when CW key was down
