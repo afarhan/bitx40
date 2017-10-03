@@ -519,21 +519,21 @@ void doTuning(){
  int knob = analogRead(ANALOG_TUNING)-10;
  unsigned long old_freq = frequency;
 
-  // the knob is fully on the low end, move down by 10 Khz and wait for 200 msec
+  // the knob is fully on the low end, move down by 10 Khz and wait for 400 msec
  if (knob < 10 && frequency > LOWEST_FREQ) {
       baseTune = baseTune - 10000l;
       frequency = baseTune;
       updateDisplay();
       setFrequency(frequency);
-      delay(200);
+      delay(400);
   } 
-  // the knob is full on the high end, move up by 10 Khz and wait for 200 msec
+  // the knob is full on the high end, move up by 10 Khz and wait for 400 msec
   else if (knob > 1010 && frequency < HIGHEST_FREQ) {
      baseTune = baseTune + 10000l; 
      frequency = baseTune + 50000l;
      setFrequency(frequency);
      updateDisplay();
-     delay(200);
+     delay(400);
   }
   // the tuning knob is at neither extremities, tune the signals as usual
   else if (knob != old_knob){
