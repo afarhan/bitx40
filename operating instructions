@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.24
+User instructions for Raduino_v1.25
 
 After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -28,6 +28,7 @@ The PTT SENSE is required for the CW, RIT, SPLIT functionality, and for disablin
 
 CONNECTING A STRAIGHT MORSE KEY or 'TUNE' BUTTON:
 A straight key (or external electronic keyer) can be connected to Raduino pin A1 (connector P1, brown wire).
+It is recommended to install a 1K series resistor to protect the Arduino input.
 When the key is up (open) pin A1 will be HIGH.
 When the key is down (closed, shorted to ground) pin A1 will be LOW, and a carrier will be transmitted.
 You could also wire up a simple push button instead of connecting a morse key. The generated CW carrier can be used for
@@ -39,7 +40,24 @@ The Raduino is set up for straight key operation by default. If you want to use 
 and to 'CW parameters' => 'Key-type' and select 'paddle', 'rev. paddle' (for left-handed operators), 'bug', or 'rev. bug'.
 Connect the 'dit' contact to Raduino pin A1 (connector P1, brown wire).
 Connect the 'dah' contact to Raduino pin D3 (connector P3).
+It is recommended to install 1K series resistors to protect the Arduino inputs.
 The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality.
+
+CAPACITIVE TOUCH KEYER:
+The sketch supports Capacitive Touch functionality. See https://www.youtube.com/watch?v=9MWM6UVy9k4 for a demonstration.
+A minimal modification (add four resistors) is required for this function, for details
+see https://github.com/amunters/bitx40/blob/master/capacitive%20touch%20keyer%20modification.png
+The capacitive touch sensors are disabled by default. To enable them, go to the SETTINGS menu and to 'CW parameters' =>
+'Touch sensor', and use the tuning knob to set the desired touch sensor sensitivity.
+A good sensitivity value to start with is 20. Increase the value for more sensitivity. The maximum value is 25.
+The sensitivity setting is quite delicate and depends on your personal taste. The best results are usually obtained with
+high sensitivity. However, if the sensitivity is too high, the radio may be keyed by electrical noise or objects nearby
+the touch pads. It may also happen that iambic keying will occur even when only one touch pad is touched. Reduce the
+sensitivity if these symptons occur. On the other hand, if the sensitivity is too low, the keyer may not respond properly
+to the touch pads, for example double DITs or DAHs may be generated. Some experimentation may be required to find the optimum
+setting.
+The touch sensors are calibrated automatically at start up. If you want to recalibrate them, simply power OFF and ON again,
+while NOT touching the sensor pads. The sensor calibration data will be shown on the LCD display at start up.
 
 CW-CARRIER WIRING:
 This is required for CW operation (or when you want to generate a carrier for tuning)
@@ -171,6 +189,8 @@ In the SETTINGS menu:
  - using the tuning pot, select "straight" for straight CW key operation, "paddle" for automatic CW keyer,
    "rev. paddle" for left-handed CW-operators, "bug", or "rev. bug".
  - press the FB
+ - using the tuning pot, set the desired touch keyer sensitivity (0=OFF).
+ - press the FB
  - using the tuning pot, select Auto-space ON or OFF
  - press the FB
  - using the tuning pot, select semiQSK ON or OFF
@@ -204,6 +224,7 @@ Tuning pot span: 50 kHz
 Mode LSB for both VFO A and B
 CW side tone: 800 Hz
 CW key-type: Straight key
+Touch sensors: OFF
 Auto-space: OFF
 semiQSK: ON
 QSK delay: 350 ms
@@ -212,4 +233,4 @@ Upper scan limit: 7150 kHz
 Scan step: 1 kHz
 Scan step delay: 500 ms
 
-A warning message "uncalibrated" will be displayed until you recalibrate the VFO again.
+A warning message "VFO uncalibrated" will be displayed until you recalibrate the VFO again.
