@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.24 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.25 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -63,6 +63,9 @@
 
 // Function Button
 #define CLICK_DELAY 500           // max time (in ms) between function button clicks
+
+// Capacitive touch keyer
+#define CAP_SENSITIVITY 0         // capacitive touch sensor OFF
 
 /**
 
@@ -185,6 +188,7 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
          +12V +12V CLK2  GND  GND CLK1  GND  GND  CLK0  GND  D2   D3   D4   D5   D6   D7
     These too are flexible with what you may do with them, for the Raduino, we use them to :
 
+    output D2 - PULSE : is used for the capacitive touch keyer
     input D3  - DAH : is connected to the 'Dah' contact of an paddle keyer (switch to ground).
     input D4  - SPOT : is connected to a push button that can momentarily ground this line. When the SPOT button is pressed a sidetone will be generated for zero beat tuning.
     output D5 - CW_TONE : Side tone output
@@ -192,18 +196,12 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
     output D7 - TX_RX line : Switches between Transmit and Receive in CW mode
 */
 
+#define PULSE (2)
 #define DAH (3)
 #define SPOT (4)
 #define CW_TONE (5)
 #define CW_CARRIER (6)
 #define TX_RX (7)
-
-/**
-    The raduino has a number of timing parameters, all specified in milliseconds
-    QSK_DELAY : how many milliseconds between consecutive keyup and keydowns before switching back to receive?
-*/
-
-int QSK_DELAY; // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs (value is set in the SETTINGS menu)
 
 /**
    The Raduino supports two VFOs : A and B and receiver incremental tuning (RIT).
@@ -263,26 +261,36 @@ int scan_step_delay; // step delay (ms) (value is set in the SETTINGS menu)
 /**
    Raduino needs to keep track of current state of the transceiver. These are a few variables that do it
 */
-byte mode = LSB; // mode of the currently active VFO
-bool inTx = false; // whether or not we are in transmit mode
-bool keyDown = false; // whether we have a key up or key down
-unsigned long TimeOut = 0;
-bool semiQSK; //whether we use semi QSK or manual PTT (value is set in the SETTINGS menu)
+byte mode = LSB;           // mode of the currently active VFO
+bool inTx = false;         // whether or not we are in transmit mode
+bool keyDown = false;      // whether we have a key up or key down
+unsigned long TimeOut = 0; // time in ms since last key down
+bool semiQSK;              //whether we use semi QSK or manual PTT (value is set in the SETTINGS menu)
+int QSK_DELAY;             // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs (value is set in the SETTINGS menu)
 
 
 //some variables used for the autokeyer function:
 
-byte key_type = 0; // straight key (0), paddle (1) or reversed paddle (2) (value is set in the SETTINGS menu)
-bool keyeron = false; //will be true while keying
+byte key_type = 0;         // straight key (0), paddle (1) or reversed paddle (2) (value is set in the SETTINGS menu)
+bool keyeron = false;      //will be true while auto-keying
 unsigned long released = 0;
 bool ditlatch = false;
 bool dahlatch = false;
-byte wpm; // keyer speed (words per minute) (value is set in the SETTINGS menu)
-byte gap = 1; // space between elements or characters
+byte wpm;                  // keyer speed (words per minute) (value is set in the SETTINGS menu)
+byte gap = 1;              // space between elements (1) or characters (3)
 bool autospace = false;
 unsigned long dit;
 unsigned long dah;
 unsigned long space = 0;
+
+// some variable used by the capacitive touch keyer:
+
+bool CapTouch_installed = true;  // whether or not the capacitive touch modifiaction is installed (detected automatically during startup)
+byte base_sens_KEY;              // base delay (in us) when DIT pad is NOT touched (measured automatically by touch sensor calibration routine)
+byte base_sens_DAH;              // base delay (in us) when DAH pad is NOT touched (measured automatically by touch sensor calibration routine)
+byte cap_sens;                   // additional delay to both touch pads (for controlling the touch sensitivity)
+bool capaKEY = false;            // true when DIT pad is touched
+bool capaDAH = false;            // true when DAH pad is touched
 
 /**
     Tks Pavel CO7WT:
@@ -293,8 +301,8 @@ unsigned long space = 0;
 
 byte _key = KEY;
 byte _dah = DAH;
-byte *paddleDIT = &_key; // Paddle DIT bind to KEY
-byte *paddleDAH = &_dah; // Paddle DAH bind to DAH
+byte *paddleDIT = &_key;         // Paddle DIT bind to KEY
+byte *paddleDAH = &_dah;         // Paddle DAH bind to DAH
 
 /** Tuning Mechanism of the Raduino
     We use a linear pot that has two ends connected to +5 and the ground. the middle wiper
@@ -315,34 +323,34 @@ byte *paddleDAH = &_dah; // Paddle DAH bind to DAH
     To stop the scanning the pot is moved back from the edge.
 */
 
-int POT_SPAN; // span (in kHz) from lower end to upper end of the tuning pot (value is set in the SETTINGS menu)
+int POT_SPAN;                       // span (in kHz) from lower end to upper end of the tuning pot (value is set in the SETTINGS menu)
 unsigned long baseTune = 7100000UL; // frequency (Hz) when tuning pot is at minimum position
 
 #define bfo_freq (11998000UL)
 
 int old_knob = 0;
 
-int CW_OFFSET; // the amount of offset (Hz) during RX, equal to sidetone frequency (value is set in the SETTINGS menu)
+int CW_OFFSET;   // the amount of offset (Hz) during RX, equal to sidetone frequency (value is set in the SETTINGS menu)
 int RXshift = 0; // the actual frequency shift that is applied during RX depending on the operation mode
 
-unsigned long LOWEST_FREQ; // absolute minimum frequency (Hz) (value is set in the SETTINGS menu)
+unsigned long LOWEST_FREQ;  // absolute minimum frequency (Hz) (value is set in the SETTINGS menu)
 unsigned long HIGHEST_FREQ; //  absolute maximum frequency (Hz) (value is set in the SETTINGS menu)
 
-unsigned long frequency; // the 'dial' frequency as shown on the display
-int fine = 0; // fine tune offset (Hz)
+unsigned long frequency;    // the 'dial' frequency as shown on the display
+int fine = 0;               // fine tune offset (Hz)
 
 /**
    The raduino has multiple RUN-modes:
 */
-#define RUN_NORMAL (0)  // normal operation
-#define RUN_CALIBRATE (1) // calibrate VFO frequency in LSB mode
-#define RUN_DRIVELEVEL (2) // set VFO drive level
-#define RUN_TUNERANGE (3) // set the range of the tuning pot
-#define RUN_CWOFFSET (4) // set the CW offset (=sidetone pitch)
-#define RUN_SCAN (5) // frequency scanning mode
+#define RUN_NORMAL (0)      // normal operation
+#define RUN_CALIBRATE (1)   // calibrate VFO frequency in LSB mode
+#define RUN_DRIVELEVEL (2)  // set VFO drive level
+#define RUN_TUNERANGE (3)   // set the range of the tuning pot
+#define RUN_CWOFFSET (4)    // set the CW offset (=sidetone pitch)
+#define RUN_SCAN (5)        // frequency scanning mode
 #define RUN_SCAN_PARAMS (6) // set scan parameters
-#define RUN_MONITOR (7) // frequency scanning mode
-#define RUN_FINETUNING (8) // fine tuning mode
+#define RUN_MONITOR (7)     // frequency scanning mode
+#define RUN_FINETUNING (8)  // fine tuning mode
 
 byte RUNmode = RUN_NORMAL;
 
@@ -378,15 +386,15 @@ byte RUNmode = RUN_NORMAL;
 void si5351bx_init() {                  // Call once at power-up, start PLLA
   uint8_t reg;  uint32_t msxp1;
   Wire.begin();
-  i2cWrite(149, 0);                   // SpreadSpectrum off
-  i2cWrite(3, si5351bx_clken);        // Disable all CLK output drivers
-  i2cWrite(183, SI5351BX_XTALPF << 6); // Set 25mhz crystal load capacitance
-  msxp1 = 128 * SI5351BX_MSA - 512;   // and msxp2=0, msxp3=1, not fractional
+  i2cWrite(149, 0);                     // SpreadSpectrum off
+  i2cWrite(3, si5351bx_clken);          // Disable all CLK output drivers
+  i2cWrite(183, SI5351BX_XTALPF << 6);  // Set 25mhz crystal load capacitance
+  msxp1 = 128 * SI5351BX_MSA - 512;     // and msxp2=0, msxp3=1, not fractional
   uint8_t  vals[8] = {0, 1, BB2(msxp1), BB1(msxp1), BB0(msxp1), 0, 0, 0};
-  i2cWriten(26, vals, 8);             // Write to 8 PLLA msynth regs
-  i2cWrite(177, 0x20);                // Reset PLLA  (0x80 resets PLLB)
+  i2cWriten(26, vals, 8);               // Write to 8 PLLA msynth regs
+  i2cWrite(177, 0x20);                  // Reset PLLA  (0x80 resets PLLB)
   // for (reg=16; reg<=23; reg++) i2cWrite(reg, 0x80);    // Powerdown CLK's
-  // i2cWrite(187, 0);                // No fannout of clkin, xtal, ms0, ms4
+  // i2cWrite(187, 0);                  // No fannout of clkin, xtal, ms0, ms4
 }
 
 void si5351bx_setfreq(uint8_t clknum, uint32_t fout) {  // Set a CLK to fout Hz
@@ -438,8 +446,8 @@ void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
 */
 
 void printLine(char linenmbr, char *c) {
-  if (strcmp(c, printBuff[linenmbr])) { // only refresh the display when there was a change
-    lcd.setCursor(0, linenmbr); // place the cursor at the beginning of the selected line
+  if (strcmp(c, printBuff[linenmbr])) {     // only refresh the display when there was a change
+    lcd.setCursor(0, linenmbr);             // place the cursor at the beginning of the selected line
     lcd.print(c);
     strcpy(printBuff[linenmbr], c);
 
@@ -733,8 +741,7 @@ void checkTX() {
 */
 
 void checkCW() {
-
-  if (!keyDown && (!digitalRead(KEY) || (key_type > 0 && !digitalRead(DAH)))) {
+  if (!keyDown && ((cap_sens == 0 && !digitalRead(KEY)) || (cap_sens != 0 && capaKEY) || (key_type > 0 && ((cap_sens == 0 && !digitalRead(DAH)) || (cap_sens != 0 && capaDAH))))) {
     keyDown = true;
 
     if (key_type > 0) { // if we are using the keyer
@@ -753,24 +760,24 @@ void checkCW() {
         paddleDIT = &_dah;
       }
 
-      if (!digitalRead(*paddleDIT))
+      if ((cap_sens == 0 && !digitalRead(*paddleDIT)) || (cap_sens != 0 && capaKEY))
         dit = millis();
-      if (!digitalRead(*paddleDAH))
+      if ((cap_sens == 0 && !digitalRead(*paddleDAH)) || (cap_sens != 0 && capaDAH))
         dah = millis();
     }
 
-    if (!inTx && semiQSK) {     //switch to transmit mode if we are not already in it
+    if (!inTx && semiQSK) {     // switch to transmit mode if we are not already in it
 
-      digitalWrite(TX_RX, 1); // activate the PTT switch - go in transmit mode
-      delay(5);  //give the relays a few ms to settle the T/R relays
+      digitalWrite(TX_RX, 1);   // activate the PTT switch - go in transmit mode
+      delay(5);                 // give the relays a few ms to settle the T/R relays
       inTx = true;
 
-      if (splitOn) // when SPLIT is on, swap the VFOs first
+      if (splitOn)              // when SPLIT is on, swap the VFOs first
         swapVFOs();
 
-      mode = mode | 2; // go into to CW mode
+      mode = mode | 2;          // go into to CW mode
 
-      if (!vfoActive) { // if VFO A is active
+      if (!vfoActive) {         // if VFO A is active
         mode_A = mode;
         EEPROM.put(24, mode_A);
       }
@@ -790,7 +797,7 @@ void checkCW() {
     TimeOut = millis() + QSK_DELAY;
 
   //if the key goes up again after it's been down
-  if (keyDown && digitalRead(KEY)) {
+  if (keyDown && ((cap_sens == 0 && digitalRead(KEY)) || (cap_sens != 0 && !capaKEY))) {
     keyDown = false;
     TimeOut = millis() + QSK_DELAY;
   }
@@ -801,29 +808,30 @@ void checkCW() {
   if (TimeOut > 0 && inTx && TimeOut < millis() && semiQSK) {
 
     inTx = false;
-    TimeOut = 0; // reset the CW timeout counter
-    RXshift = CW_OFFSET; // apply the frequency offset in RX
+    TimeOut = 0;                   // reset the CW timeout counter
+    RXshift = CW_OFFSET;           // apply the frequency offset in RX
     setFrequency(frequency);
     shiftBase();
 
-    if (splitOn) // then swap the VFOs back when SPLIT was on
+    if (splitOn)                   // then swap the VFOs back when SPLIT was on
       swapVFOs();
 
-    digitalWrite(TX_RX, 0); // release the PTT switch - move the radio back to receive
-    delay(10);  //give the relays a few ms to settle the T/R relays
+    digitalWrite(TX_RX, 0);        // release the PTT switch - move the radio back to receive
+    delay(10);                     //give the relays a few ms to settle the T/R relays
   }
 
   if (key_type == 0 && keyDown && mode & B00000010) {
-    digitalWrite(CW_CARRIER, 1); // generate carrier
-    tone(CW_TONE, CW_OFFSET); // generate sidetone
+    digitalWrite(CW_CARRIER, 1);   // generate carrier
+    tone(CW_TONE, CW_OFFSET);      // generate sidetone
   }
   else if (key_type == 0 && digitalRead(SPOT) == HIGH) {
-    digitalWrite(CW_CARRIER, 0); // stop generating the carrier
-    noTone(CW_TONE); // stop generating the sidetone
+    digitalWrite(CW_CARRIER, 0);   // stop generating the carrier
+    noTone(CW_TONE);               // stop generating the sidetone
   }
 }
 
 void keyer() {
+
   static bool FBpressed = false;
   static bool SPOTpressed = false;
 
@@ -843,7 +851,7 @@ void keyer() {
   }
 
   if (key_type > 2) { // bug mode
-    if (!digitalRead(*paddleDAH))
+    if ((cap_sens == 0 && !digitalRead(*paddleDAH)) || (cap_sens != 0 && capaDAH))
       dah = millis();
     else
       dah = 0;
@@ -864,35 +872,35 @@ void keyer() {
     }
     if (millis() - space > gap * element) {
       if (dit < dah) {
-        if (ditlatch || !digitalRead(*paddleDIT)) {
+        if (ditlatch || (cap_sens == 0 && !digitalRead(*paddleDIT)) || (cap_sens != 0 && capaKEY)) {
           dit = millis();
           keyeron = true;
           ditlatch = false;
           keyDown = true;
-          gap = 1; //standard gap between dits and dahs
+          gap = 1; //standard gap between elements
           space = 0;
           released = 0;
         }
         else {
-          if (dahlatch || !digitalRead(*paddleDAH)) {
+          if (dahlatch || (cap_sens == 0 && !digitalRead(*paddleDAH)) || (cap_sens != 0 && capaDAH)) {
             dah = millis();
             keyeron = true;
             dahlatch = false;
             keyDown = true;
-            gap = 1; //standard gap between dits and dahs
+            gap = 1; //standard gap between elements
             space = 0;
             released = 0;
           }
           else {
             if (autospace)
-              gap = 3; // autospace - character gap is 3 times the length of a dit
+              gap = 3; // autospace - character gap is 3 elements
             keyeron = true;
             keyDown = true;
 
             if (millis() - space > gap * element) {
               keyeron = false;
               keyDown = false;
-              gap = 1; //standard gap between dits and dahs
+              gap = 1; //standard gap between elements
               space = 0;
               released = 0;
             }
@@ -900,34 +908,34 @@ void keyer() {
         }
       }
       else {
-        if (dahlatch || !digitalRead(*paddleDAH)) {
+        if (dahlatch || (cap_sens == 0 && !digitalRead(*paddleDAH)) || (cap_sens != 0 && capaDAH)) {
           dah = millis();
           keyeron = true;
           dahlatch = false;
           keyDown = true;
-          gap = 1; //standard gap between dits and dahs
+          gap = 1; //standard gap between elements
           space = 0;
           released = 0;
         }
         else {
-          if (ditlatch || !digitalRead(*paddleDIT)) {
+          if (ditlatch || (cap_sens == 0 && !digitalRead(*paddleDIT)) || (cap_sens != 0 && capaKEY)) {
             dit = millis();
             keyeron = true;
             ditlatch = false;
             keyDown = true;
-            gap = 1; //standard gap between dits and dahs
+            gap = 1; //standard gap between elements
             space = 0;
             released = 0;
           }
           else {
             if (autospace)
-              gap = 3; // autospace - character gap is 3 times the length of a dit
+              gap = 3; // autospace - character gap is 3 elements
             keyeron = true;
             keyDown = true;
             if (millis() - space > gap * element) {
               keyeron = false;
               keyDown = false;
-              gap = 1; //standard gap between dits and dahs
+              gap = 1; //standard gap between elements
               space = 0;
               released = 0;
             }
@@ -938,21 +946,33 @@ void keyer() {
   }
 
   if (released == 0) {
-    if (space == 0 && millis() - dit < element && digitalRead(*paddleDIT))
+    if (space == 0 && millis() - dit < element && ((cap_sens == 0 && digitalRead(*paddleDIT)) || (cap_sens != 0 && !capaKEY)))
       released = millis();
-    if (space == 0 && millis() - dah < 3 * element && digitalRead(*paddleDAH))
+    if (space == 0 && millis() - dah < 3 * element && ((cap_sens == 0 && digitalRead(*paddleDAH)) || (cap_sens != 0 && !capaDAH)))
       released = millis();
-    if (space > 0 && digitalRead(*paddleDIT) && digitalRead(*paddleDAH))
+    if (space > 0 && ((cap_sens == 0 && digitalRead(*paddleDIT)) || (cap_sens != 0 && !capaKEY)) && ((cap_sens == 0 && digitalRead(*paddleDAH)) || (cap_sens != 0 && !capaDAH)))
       released = millis();
   }
 
-  if (released > 0 && millis() - released > DIT_DELAY && !digitalRead(*paddleDIT)) { // DIT_DELAY optimized timing characteristics - tks Hidehiko, JA9MAT
-    ditlatch = true;
-    dahlatch = false;
+  if (cap_sens == 0) { // if standard paddle is used
+    if (released > 0 && millis() - released > DIT_DELAY && !digitalRead(*paddleDIT)) { // DIT_DELAY optimized timing characteristics - tks Hidehiko, JA9MAT
+      ditlatch = true;
+      dahlatch = false;
+    }
+    else if (space > 0 && released > 0 && millis() - released > DAH_DELAY && !digitalRead(*paddleDAH)) { // DAH_DELAY optimized timing characteristics - tks Hidehiko, JA9MAT
+      dahlatch = true;
+      ditlatch = false;
+    }
   }
-  else if (space > 0 & released > 0 && millis() - released > DAH_DELAY && !digitalRead(*paddleDAH)) { // DAH_DELAY optimized timing characteristics - tks Hidehiko, JA9MAT
-    dahlatch = true;
-    ditlatch = false;
+  else { // if touch keyer is used
+    if (released > 0 && capaKEY) {
+      ditlatch = true;
+      dahlatch = false;
+    }
+    else if (released > 0 && capaDAH) {
+      dahlatch = true;
+      ditlatch = false;
+    }
   }
 
   if (keyeron) {
@@ -1204,7 +1224,7 @@ void checkButton() {
       set_tune_range();
       break;
 
-    case 16: // set CW parameters (sidetone pitch, CW timeout)
+    case 16: // set CW parameters (sidetone pitch, QSKdelay, key type, capacitive touch key, auto space)
       param = 1;
       set_CWparams();
       break;
@@ -1231,17 +1251,17 @@ void swapVFOs() {
     mode = mode_B;
   }
 
-  if (mode & 1) // if we are in UPPER side band mode
+  if (mode & 1)          // if we are in UPPER side band mode
     SetSideBand(USBdrive);
-  else // if we are in LOWER side band mode
+  else                   // if we are in LOWER side band mode
     SetSideBand(LSBdrive);
 
   if (!inTx && mode > 1)
     RXshift = CW_OFFSET; // add RX shift when we are receiving in CW mode
   else
-    RXshift = 0; // no RX shift when we are receiving in SSB mode
+    RXshift = 0;         // no RX shift when we are receiving in SSB mode
 
-  shiftBase(); //align the current knob position with the current frequency
+  shiftBase();           //align the current knob position with the current frequency
 }
 
 void toggleRIT() {
@@ -1499,14 +1519,21 @@ void set_CWparams() {
         shift = knob;
         break;
       case 3:
+        current_setting = cap_sens;
+        shift = knob;
+        pinMode(KEY, INPUT);
+        pinMode(DAH, INPUT);
+        calibrate_touch_pads(); // measure the base capacitance of the touch pads while they're not being touched
+        break;
+      case 4:
         current_setting = autospace;
         shift = knob;
         break;
-      case 4:
+      case 5:
         current_setting = semiQSK;
         shift = knob;
         break;
-      case 5:
+      case 6:
         current_setting = QSK_DELAY;
         shift = current_setting - 10 * (knob / 10);
         break;
@@ -1527,14 +1554,32 @@ void set_CWparams() {
       key_type = ((((knob - shift) + 4 + current_setting * 26) & 127) / 26);
       break;
     case 3:
-      //generate values 0-1-0-1 from the tuning pot
-      autospace = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
+      //generate values 0-25 from the tuning pot
+      cap_sens = constrain((knob - shift) / 40 + current_setting, 0, 25);
+      if (knob < 5 && cap_sens > 0)
+        shift = shift + 10;
+      else if (knob > 1020 && cap_sens < 25)
+        shift = shift - 10;
+
+      //configure the morse keyer inputs
+      if (cap_sens == 0) { // enable the internal pull-ups if capacitive touch keys are NOT used
+        pinMode(KEY, INPUT_PULLUP);
+        pinMode(DAH, INPUT_PULLUP);
+      }
+      else { // disable the internal pull-ups if capacitive touch keys are used
+        pinMode(KEY, INPUT);
+        pinMode(DAH, INPUT);
+      }
       break;
     case 4:
       //generate values 0-1-0-1 from the tuning pot
-      semiQSK = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
+      autospace = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
       break;
     case 5:
+      //generate values 0-1-0-1 from the tuning pot
+      semiQSK = ((((knob - shift + 4) & 64) / 64) + current_setting) & 1;
+      break;
+    case 6:
       //generate values 10-1000 from the tuning pot
       QSK_DELAY = constrain(10 * (knob / 10) + shift, 10, 1000);
       if (knob < 5 && QSK_DELAY >= 20)
@@ -1549,7 +1594,7 @@ void set_CWparams() {
     switch (param) {
       case 1:
         EEPROM.get(36, QSK_DELAY); // restore QSK_DELAY to original value
-        //Write the 2 bytes of the CW offset into the eeprom memory.
+        //Write the 2 bytes of the QSK_DELAY into the eeprom memory.
         EEPROM.put(12, CW_OFFSET);
         bleep(600, 50, 1);
         delay(200);
@@ -1559,16 +1604,27 @@ void set_CWparams() {
         //Write 1 byte of the key-type into the eeprom memory.
         bleep(600, 50, 1);
         delay(200);
+        if (!CapTouch_installed) {
+          param++;
+          if (key_type == 0)
+            param++;
+        }
+        break;
+      case 3:
+        EEPROM.put(48, cap_sens);
+        //Write 1 byte of cap_sens into the eeprom memory.
+        bleep(600, 50, 1);
+        delay(200);
         if (key_type == 0)
           param++;
         break;
-      case 3:
+      case 4:
         EEPROM.put(47, autospace);
         //Write 1 byte of autospace into the eeprom memory.
         bleep(600, 50, 1);
         delay(200);
         break;
-      case 4:
+      case 5:
         EEPROM.put(8, semiQSK);
         //Write 1 byte of semiQSK into the eeprom memory.
         if (semiQSK) {
@@ -1578,7 +1634,7 @@ void set_CWparams() {
         else {
           QSK_DELAY = 10; // set CW timeout to minimum when manual PTT is selected
           EEPROM.put(36, QSK_DELAY);
-          //Write 2 bytes of the CW timeout into the eeprom memory.
+          //Write 2 bytes of the QSK_DELAY into the eeprom memory
           printLine(1, (char *)"CW params set!");
           RUNmode = RUN_NORMAL;
           delay(700);
@@ -1587,7 +1643,7 @@ void set_CWparams() {
           shiftBase(); //align the current knob position with the current frequency
         }
         break;
-      case 5:
+      case 6:
         //Write the 2 bytes of the CW Timout into the eeprom memory.
         EEPROM.put(36, QSK_DELAY);
         printLine(1, (char *)"CW params set!");
@@ -1633,20 +1689,29 @@ void set_CWparams() {
         }
         break;
       case 3:
+        if (cap_sens == 0)
+          strcpy(c, "Touch sensor OFF");
+        else {
+          itoa((cap_sens), b, DEC);
+          strcpy(c, "Touch sens: ");
+          strcat(c, b);
+        }
+        break;
+      case 4:
         strcpy(c, "Auto-space: ");
         if (autospace)
           strcat(c, "ON");
         else
           strcat(c, "OFF");
         break;
-      case 4:
+      case 5:
         strcpy(c, "Semi-QSK: ");
         if (semiQSK)
           strcat(c, "ON");
         else
           strcat(c, "OFF");
         break;
-      case 5:
+      case 6:
         itoa(QSK_DELAY, b, DEC);
         strcpy(c, "QSK delay ");
         strcat(c, b);
@@ -1845,7 +1910,8 @@ void set_drive_level(byte level) {
 }
 
 void doRIT() {
-
+  if (millis() - max(dit, dah) < 1000)
+    return;
   int knob = knob_position(); // get the current tuning knob position
 
   if (firstrun) {
@@ -2083,6 +2149,7 @@ void factory_settings() {
   EEPROM.put(39, MIN_FREQ); // absolute minimum frequency
   EEPROM.put(43, MAX_FREQ); // absolute maximum frequency
   EEPROM.put(47, AUTOSPACE); // CW keyer autospace ON/OFF
+  EEPROM.put(48, CAP_SENSITIVITY); // Capacitive touch sensor sensitivity (0=OFF)
 
   delay(1000);
 }
@@ -2130,7 +2197,7 @@ void scan() {
 
   int knob = knob_position();
 
-  if (abs(knob - old_knob) > 8 || (digitalRead(PTT_SENSE) && PTTsense_installed) || !digitalRead(FBUTTON) || !digitalRead(KEY) || !digitalRead(SPOT)) {
+  if (abs(knob - old_knob) > 8 || (digitalRead(PTT_SENSE) && PTTsense_installed) || !digitalRead(FBUTTON) || (cap_sens == 0 && !digitalRead(KEY)) || (cap_sens != 0 && capaKEY) || !digitalRead(SPOT)) {
     //stop scanning
     TimeOut = 0; // reset the timeout counter
     RUNmode = RUN_NORMAL;
@@ -2153,6 +2220,145 @@ void scan() {
   }
 }
 
+
+// Routine to detect whether or not the touch pads are being touched.
+// This routine is only executed when the related touch keyer mod is installed.
+// We need two 470K resistors connected from the PULSE output to either KEY and DAH inputs.
+// We send LOW to the PULSE output and as a result the internal capacitance on the KEY and DAH
+// inputs will start to discharge. After a short "threshold" delay, we test whether the
+// KEY and DAH inputs are still HIGH or already LOW.
+// When the KEY or DAH input is already LOW, it means the internal base capacitance has rapidly
+// discharged, so we can conclude the touch pad wasn't touched.
+// When the KEY or DAH input is still HIGH, it means that the pad was touched.
+// When the pad is touched, the human body adds extra capacitance to the internal base capacity,
+// and he increased capacity will not rapidly discharge within the given threshold delay time.
+// Finally we send HIGH to the pulse output allowing the capacitance to recharge for the next cycle.
+// We can control the touch sensitivity by varying the threshold delay time.
+// The minimum delay time is the base_sens value as determined by the calibration routine which
+// is executed automatically during power on.
+// With minimum delay time we will have maximum touch sensitivity. If we want to reduce the sensitivity
+// we add some extra delay time (cap_sens). The user can set the desired touch sensisitivy value in the
+// SETTINGS menu (1-25 µs extra delay).
+
+void touch_key() {
+  static unsigned long KEYup = 0;
+  static unsigned long KEYdown = 0;
+  static unsigned long DAHup = 0;
+  static unsigned long DAHdown = 0;
+
+  digitalWrite(PULSE, LOW);                          // send LOW to the PULSE output
+  delayMicroseconds(base_sens_KEY + 25 - cap_sens);  // wait few microseconds for the KEY capacitance to discharge
+  if (digitalRead(KEY)) {                            // test if KEY input is still HIGH
+    KEYdown = millis();                              // KEY touch pad was touched
+    if (!capaKEY && millis() - KEYup > 1) {
+      capaKEY = true;
+      released = 0;
+    }
+  }
+  else {                                             // KEY touch pad was not touched
+    KEYup = millis();
+    if (capaKEY && millis() - KEYdown > 10)
+      capaKEY = false;
+  }
+
+  digitalWrite(PULSE, HIGH);                         // send HIGH to the PULSE output
+  delayMicroseconds(50);                             // allow the capacitance to recharge
+
+  digitalWrite(PULSE, LOW);                          // send LOW to the PULSE output
+  delayMicroseconds(base_sens_DAH + 25 - cap_sens);  // wait few microseconds for the DAH capacitance to discharge
+
+  if (digitalRead(DAH)) {                            // test if DAH input is still HIGH
+    DAHdown = millis();                              // DAH touch pad was touched
+    if (!capaDAH && millis() - DAHup > 1) {
+      capaDAH = true;
+      released = 0;
+    }
+  }
+  else {                                             // DAH touch pad was not touched
+    DAHup = millis();
+    if (capaDAH && millis() - DAHdown > 10)
+      capaDAH = false;
+  }
+
+  digitalWrite(PULSE, HIGH);                         // send HIGH to the PULSE output
+  delayMicroseconds(50);                             // allow the capacitance to recharge
+
+  // put the touch sensors in the correct position
+  if (key_type == 2 || key_type == 4) {
+    // swap capaKEY and capaDAH if paddle is reversed
+    capaKEY = capaKEY xor capaDAH;
+    capaDAH = capaKEY xor capaDAH;
+    capaKEY = capaKEY xor capaDAH;
+  }
+}
+
+// Routine to calibrate the touch key pads
+// (measure the time it takes the capacitance to discharge while the touch pads are NOT touched)
+// Even when the touch pads are NOT touched, there is some internal capacitance
+// The internal capacitance may vary depending on the length and routing of the wiring
+// We measure the base capacitance so that we can use it as a baseline reference
+// (threshold delay when the pads are not touched).
+
+void calibrate_touch_pads() {
+  bool triggered;
+  // first we calibrate the KEY (DIT) touch pad
+  base_sens_KEY = 0;                    // base capacity of the KEY (DIT) touch pad
+  do {
+    base_sens_KEY++;                    // increment the delay time until the KEY touch pad is no longer triggered by the base capacitance
+    triggered = false;
+    for (int i = 0; i < 100; i++) {
+      digitalWrite(PULSE, HIGH);        // bring the KEY input to a digital HIGH level
+      delayMicroseconds(50);            // wait a short wile to allow voltage on the KEY input to stabalize
+      digitalWrite(PULSE, LOW);         // now bring the KEY input to a digital LOW value
+      delayMicroseconds(base_sens_KEY); // wait few microseconds
+      if (digitalRead(KEY)) {           // check 100 times if KEY input is still HIGH
+        triggered = true;               // if KEY is still high, then it was triggered by the base capacitance
+        i = 100;
+      }
+    }
+  } while (triggered && base_sens_KEY != 255);               // keep trying until KEY input is no longer triggered
+
+  // Next we calibrate the DAH pad
+  base_sens_DAH = 0;                    // base capacity of the DAH touch pad
+  do {
+    base_sens_DAH++;                    // increment the delay time until the DAH touch pad is no longer triggered by the base capacitance
+    triggered = false;
+    for (int i = 0; i < 100; i++) {
+      digitalWrite(PULSE, HIGH);        // bring the KEY input to a digital HIGH level
+      delayMicroseconds(50);            // wait a short wile to allow voltage on the DAH input to stabalize
+      digitalWrite(PULSE, LOW);         // now bring the DAH input to a digital LOW value
+      delayMicroseconds(base_sens_DAH); // wait few microseconds
+      if (digitalRead(DAH)) {           // check 100 times if DAH input is still HIGH
+        triggered = true;               // if KEY is still high, then it was triggered by the base capacitance
+        i = 100;
+      }
+    }
+  } while (triggered && base_sens_DAH != 255);                 // keep trying until KEY input is no longer triggered
+
+  if (cap_sens != 0) {
+    printLine(0, (char *)"calib touch keys");
+    strcpy(c, "DIT ");
+    itoa(base_sens_KEY, b, DEC);
+    strcat(c, b);
+    strcat(c, ", DAH ");
+    itoa(base_sens_DAH, b, DEC);
+    strcat(c, b);
+    strcat(c, " us");
+    printLine(1, c);
+    delay(2000);
+  }
+
+  if (base_sens_KEY == 255 || base_sens_DAH == 255 || base_sens_KEY == 1 || base_sens_DAH == 1) {   // if either input is still triggered even with max delay (255 us)
+    CapTouch_installed = false;                         // then the base capacitance is too high (or the mod is not installed) so we can't use the touch keyer
+    if (cap_sens != 0) {
+      cap_sens = 0;
+      EEPROM.put(48, 0);                                // turn capacitive touch keyer OFF
+      printLine(1, (char *)"touch cal error");
+      delay(1000);
+    }
+  }
+}
+
 /**
    setup is called on boot up
    It setups up the modes for various pins as inputs or outputs
@@ -2163,8 +2369,8 @@ void scan() {
 */
 
 void setup() {
-  raduino_version = 24;
-  strcpy (c, "Raduino v1.24");
+  raduino_version = 25;
+  strcpy (c, "Raduino v1.25");
 
   lcd.begin(16, 2);
 
@@ -2172,17 +2378,11 @@ void setup() {
   Serial.begin(9600);
   analogReference(DEFAULT);
   //Serial.println("*Raduino booting up");
-
-  //configure the morse key input to use the internal pull-up
-  pinMode(KEY, INPUT_PULLUP);
+  ;
   //configure the function button to use the internal pull-up
   pinMode(FBUTTON, INPUT_PULLUP);
-  //configure the PTT SENSE to use the internal pull-up
-  pinMode(PTT_SENSE, INPUT_PULLUP);
   //configure the CAL button to use the internal pull-up
   pinMode(CAL_BUTTON, INPUT_PULLUP);
-  //configure the DAH input to use the internal pull-up
-  pinMode(DAH, INPUT_PULLUP);
   //configure the SPOT button to use the internal pull-up
   pinMode(SPOT, INPUT_PULLUP);
 
@@ -2192,6 +2392,8 @@ void setup() {
   digitalWrite(CW_CARRIER, 0);
   pinMode(CW_TONE, OUTPUT);
   digitalWrite(CW_TONE, 0);
+  pinMode(PULSE, OUTPUT);
+  digitalWrite(PULSE, 0);
 
   // when Fbutton or CALbutton is kept pressed during power up,
   // or after a version update,
@@ -2202,11 +2404,11 @@ void setup() {
     factory_settings();
   }
 
+  //configure the PTT SENSE to use the internal pull-up
+  pinMode(PTT_SENSE, INPUT_PULLUP);
   // check if PTT sense line is installed
-  if (!digitalRead(PTT_SENSE))
-    PTTsense_installed = true; //yes it's installed
-  else
-    PTTsense_installed = false; //no it's not installed
+  PTTsense_installed = !digitalRead(PTT_SENSE);
+  pinMode(PTT_SENSE, INPUT); //disable the internal pull-up
 
   printLine(0, c);
   delay(1000);
@@ -2215,11 +2417,6 @@ void setup() {
   EEPROM.get(1, wpm);
   EEPROM.get(2, cal);
   EEPROM.get(4, USB_OFFSET);
-
-  //display warning message when calibration data was erased
-  if ((cal == 0) && (USB_OFFSET == 1500))
-    printLine(1, (char *)"uncalibrated!");
-
   EEPROM.get(6, LSBdrive);
   EEPROM.get(7, USBdrive);
   EEPROM.get(8, semiQSK);
@@ -2240,6 +2437,17 @@ void setup() {
   EEPROM.get(39, LOWEST_FREQ);
   EEPROM.get(43, HIGHEST_FREQ);
   EEPROM.get(47, autospace);
+  EEPROM.get(48, cap_sens);
+
+  pinMode(KEY, INPUT);
+  pinMode(DAH, INPUT);
+  calibrate_touch_pads();  // measure the base capacitance of the touch pads while they're not being touched
+
+  //configure the morse keyer inputs
+  if (cap_sens == 0) {       // enable the internal pull-ups if touch keyer is disabled
+    pinMode(KEY, INPUT_PULLUP);
+    pinMode(DAH, INPUT_PULLUP);
+  }
 
   //initialize the SI5351
   si5351bx_init();
@@ -2266,6 +2474,12 @@ void setup() {
 
   shiftBase(); //align the current knob position with the current frequency
 
+  //display warning message when VFO calibration data was erased
+  if ((cal == 0) && (USB_OFFSET == 1500)) {
+    printLine(1, (char *)"VFO uncalibrated");
+    delay(1000);
+  }
+
   bleep(CW_OFFSET, 60, 3);
   bleep(CW_OFFSET, 180, 1);
 }
@@ -2282,7 +2496,9 @@ void loop() {
         delay(2000);
       }
       else {
-        if (!inTx) {
+        if (cap_sens != 0)
+          touch_key();
+        if (!inTx && millis() - max(dit, dah) > 1000) {
           checkButton();
           checkSPOT();
           save_frequency();
@@ -2297,7 +2513,7 @@ void loop() {
         }
         if (ritOn && !inTx)
           doRIT();
-        else
+        else if (millis() - max(dit, dah) > 1000)
           doTuning();
       }
       return;
@@ -2312,7 +2528,10 @@ void loop() {
       break;
     case 4: // set CW parameters
       set_CWparams();
+      if (cap_sens != 0)
+        touch_key();
       checkCW();
+      checkTX();
       if (keyeron)
         keyer();
       break;
