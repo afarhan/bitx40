@@ -12,6 +12,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.25
+- Added Capacitive Touch Keyer support.
+
 v1.24
 - Optimized CW keyer timing characteristics for smoother keying (tks Hidehiko, JA9MAT)
 - Added DIAL LOCK function: Press the Function Button and then the SPOT button simultanuously to lock the dial. Press the FB again to unlock.
