@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.25 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.25.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -62,10 +62,10 @@
 #define SCAN_STEP_DELAY 500       // Scan step delay in ms [accepted range 0-2000 ms]
 
 // Function Button
-#define CLICK_DELAY 500           // max time (in ms) between function button clicks
+#define CLICK_DELAY 750           // max time (in ms) between function button clicks
 
 // Capacitive touch keyer
-#define CAP_SENSITIVITY 0         // capacitive touch sensor OFF
+#define CAP_SENSITIVITY 0         // capacitive touch keyer OFF (accepted range 0-25)
 
 /**
 
@@ -984,13 +984,14 @@ void keyer() {
   }
   else if (locked)
     printLine(1, (char *)"dial is locked");
+  else if (clicks >= 10)
+    printLine(1, (char *)"--- SETTINGS ---");
   else {
-    if (clicks < 10)
-      printLine(1, (char *)" ");
-    else
-      printLine(1, (char *)"--- SETTINGS ---");
+    RIT_old = 0;
+    printLine(1, (char *)" ");
   }
 }
+
 
 /**
    The Function Button is used for several functions
@@ -1086,6 +1087,12 @@ void checkButton() {
           clicks = 11;
         if (clicks > 6 && clicks < 10)
           clicks = 1;
+        if (!PTTsense_installed) {
+          if (clicks == 2)
+            clicks = 4;
+          if (clicks == 16)
+            clicks++;
+        }
         switch (clicks) {
           //Normal menu options
           case 1:
@@ -1265,10 +1272,7 @@ void swapVFOs() {
 }
 
 void toggleRIT() {
-  if (!PTTsense_installed) {
-    printLine(1, (char *)"Not available!");
-    return;
-  }
+
   ritOn = !ritOn; // toggle RIT
   if (!ritOn)
     RIT = RIT_old = 0;
@@ -1282,10 +1286,7 @@ void toggleRIT() {
 }
 
 void toggleSPLIT() {
-  if (!PTTsense_installed) {
-    printLine(1, (char *)"Not available!");
-    return;
-  }
+
   splitOn = !splitOn; // toggle SPLIT
   EEPROM.put(27, splitOn);
   if (ritOn) {
@@ -1521,9 +1522,6 @@ void set_CWparams() {
       case 3:
         current_setting = cap_sens;
         shift = knob;
-        pinMode(KEY, INPUT);
-        pinMode(DAH, INPUT);
-        calibrate_touch_pads(); // measure the base capacitance of the touch pads while they're not being touched
         break;
       case 4:
         current_setting = autospace;
@@ -1611,6 +1609,7 @@ void set_CWparams() {
         }
         break;
       case 3:
+        calibrate_touch_pads(); // measure the base capacitance of the touch pads while they're not being touched
         EEPROM.put(48, cap_sens);
         //Write 1 byte of cap_sens into the eeprom memory.
         bleep(600, 50, 1);
@@ -1690,10 +1689,11 @@ void set_CWparams() {
         break;
       case 3:
         if (cap_sens == 0)
-          strcpy(c, "Touch sensor OFF");
+          strcpy(c, "touch keyer OFF");
         else {
+          printLine(0, (char *)"Touch sensor");
           itoa((cap_sens), b, DEC);
-          strcpy(c, "Touch sens: ");
+          strcpy(c, "sensitivity ");
           strcat(c, b);
         }
         break;
@@ -2300,6 +2300,10 @@ void touch_key() {
 // (threshold delay when the pads are not touched).
 
 void calibrate_touch_pads() {
+  // disable the internal pullups
+  pinMode(KEY, INPUT);
+  pinMode(DAH, INPUT);
+
   bool triggered;
   // first we calibrate the KEY (DIT) touch pad
   base_sens_KEY = 0;                    // base capacity of the KEY (DIT) touch pad
@@ -2335,8 +2339,15 @@ void calibrate_touch_pads() {
     }
   } while (triggered && base_sens_DAH != 255);                 // keep trying until KEY input is no longer triggered
 
-  if (cap_sens != 0) {
-    printLine(0, (char *)"calib touch keys");
+  if (base_sens_KEY == 255 || base_sens_DAH == 255 || base_sens_KEY == 1 || base_sens_DAH == 1) {   // if either input is still triggered even with max delay (255 us)
+    CapTouch_installed = false;                         // then the base capacitance is too high (or the mod is not installed) so we can't use the touch keyer
+    cap_sens = 0;
+    EEPROM.put(48, 0);                                // turn capacitive touch keyer OFF
+    printLine(0, (char *)"touch sensors");
+    printLine(1, (char *)"not detected");
+  }
+  else if (cap_sens > 0) {
+    printLine(0, (char *)"touch key calibr");
     strcpy(c, "DIT ");
     itoa(base_sens_KEY, b, DEC);
     strcat(c, b);
@@ -2345,17 +2356,17 @@ void calibrate_touch_pads() {
     strcat(c, b);
     strcat(c, " us");
     printLine(1, c);
-    delay(2000);
   }
+  else
+    printLine(1, (char *)"touch keyer OFF");
 
-  if (base_sens_KEY == 255 || base_sens_DAH == 255 || base_sens_KEY == 1 || base_sens_DAH == 1) {   // if either input is still triggered even with max delay (255 us)
-    CapTouch_installed = false;                         // then the base capacitance is too high (or the mod is not installed) so we can't use the touch keyer
-    if (cap_sens != 0) {
-      cap_sens = 0;
-      EEPROM.put(48, 0);                                // turn capacitive touch keyer OFF
-      printLine(1, (char *)"touch cal error");
-      delay(1000);
-    }
+  delay(2000);
+  updateDisplay();
+
+  //configure the morse keyer inputs
+  if (cap_sens == 0) {       // enable the internal pull-ups if touch keyer is disabled
+    pinMode(KEY, INPUT_PULLUP);
+    pinMode(DAH, INPUT_PULLUP);
   }
 }
 
@@ -2370,7 +2381,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   raduino_version = 25;
-  strcpy (c, "Raduino v1.25");
+  strcpy (c, "Raduino v1.25.1");
 
   lcd.begin(16, 2);
 
@@ -2439,14 +2450,8 @@ void setup() {
   EEPROM.get(47, autospace);
   EEPROM.get(48, cap_sens);
 
-  pinMode(KEY, INPUT);
-  pinMode(DAH, INPUT);
-  calibrate_touch_pads();  // measure the base capacitance of the touch pads while they're not being touched
-
-  //configure the morse keyer inputs
-  if (cap_sens == 0) {       // enable the internal pull-ups if touch keyer is disabled
-    pinMode(KEY, INPUT_PULLUP);
-    pinMode(DAH, INPUT_PULLUP);
+  if (PTTsense_installed) {
+    calibrate_touch_pads();  // measure the base capacitance of the touch pads while they're not being touched
   }
 
   //initialize the SI5351
@@ -2513,7 +2518,7 @@ void loop() {
         }
         if (ritOn && !inTx)
           doRIT();
-        else if (millis() - max(dit, dah) > 1000)
+        else if (millis() - max(dit, dah) > QSK_DELAY)
           doTuning();
       }
       return;
@@ -2534,7 +2539,7 @@ void loop() {
       checkTX();
       if (keyeron)
         keyer();
-      break;
+      return;
     case 5: // scan mode
       scan();
       break;
