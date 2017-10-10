@@ -1,4 +1,4 @@
-User instructions for Raduino_v1.25
+User instructions for Raduino_v1.25.1
 
 After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -41,7 +41,7 @@ and to 'CW parameters' => 'Key-type' and select 'paddle', 'rev. paddle' (for lef
 Connect the 'dit' contact to Raduino pin A1 (connector P1, brown wire).
 Connect the 'dah' contact to Raduino pin D3 (connector P3).
 It is recommended to install 1K series resistors to protect the Arduino inputs.
-The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality.
+The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality and the paddles can be reversed.
 
 CAPACITIVE TOUCH KEYER:
 The sketch supports Capacitive Touch functionality. See https://www.youtube.com/watch?v=9MWM6UVy9k4 for a demonstration.
@@ -49,7 +49,7 @@ A minimal modification (add four resistors) is required for this function, for d
 see https://github.com/amunters/bitx40/blob/master/capacitive%20touch%20keyer%20modification.png
 The capacitive touch sensors are disabled by default. To enable them, go to the SETTINGS menu and to 'CW parameters' =>
 'Touch sensor', and use the tuning knob to set the desired touch sensor sensitivity.
-A good sensitivity value to start with is 20. Increase the value for more sensitivity. The maximum value is 25.
+A good sensitivity value to start with is 22. Increase the value for more sensitivity. The maximum value is 25.
 The sensitivity setting is quite delicate and depends on your personal taste. The best results are usually obtained with
 high sensitivity. However, if the sensitivity is too high, the radio may be keyed by electrical noise or objects nearby
 the touch pads. It may also happen that iambic keying will occur even when only one touch pad is touched. Reduce the
@@ -58,6 +58,8 @@ to the touch pads, for example double DITs or DAHs may be generated. Some experi
 setting.
 The touch sensors are calibrated automatically at start up. If you want to recalibrate them, simply power OFF and ON again,
 while NOT touching the sensor pads. The sensor calibration data will be shown on the LCD display at start up.
+Note: When the touch keyer is enabled, normal paddle operation is not possible. If you want to use a standard paddle, set
+the touch sensor sensitivity to 0 (touch sensor OFF).
 
 CW-CARRIER WIRING:
 This is required for CW operation (or when you want to generate a carrier for tuning)
