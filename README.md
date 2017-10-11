@@ -12,6 +12,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.25.1
+- some minor bug corrections to the touch keyer code.
+
 v1.25
 - Added Capacitive Touch Keyer support.
 
