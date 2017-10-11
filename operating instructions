@@ -44,9 +44,13 @@ It is recommended to install 1K series resistors to protect the Arduino inputs.
 The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality and the paddles can be reversed.
 
 CAPACITIVE TOUCH KEYER:
-The sketch supports Capacitive Touch functionality. See https://www.youtube.com/watch?v=9MWM6UVy9k4 for a demonstration.
+The sketch supports Capacitive Touch functionality. With this feature it is possible to use touch sensors instead of a
+mechanical morse key or paddle. Straight key as well as automatic keyer operation is possible via the touch sensors.
+See https://www.youtube.com/watch?v=9MWM6UVy9k4 for a demonstration.
+
 A minimal modification (add four resistors) is required for this function, for details
 see https://github.com/amunters/bitx40/blob/master/capacitive%20touch%20keyer%20modification.png
+
 The capacitive touch sensors are disabled by default. To enable them, go to the SETTINGS menu and to 'CW parameters' =>
 'Touch sensor', and use the tuning knob to set the desired touch sensor sensitivity.
 A good sensitivity value to start with is 22. Increase the value for more sensitivity. The maximum value is 25.
