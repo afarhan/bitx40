@@ -13,6 +13,12 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 Revision record
 
+v1.26
+- Rearranged the menu structure, skip menu items that aren't available when related mods are not installed
+- Suppress the spurious carrier burst when the radio swithes to TX (tks Dave M0WID)
+- For VFO calibration, use multiplicative correction (ppm) for better accuracy over a wide frequency range (tks Jerry KE7ER)
+- Improved method for saving/restoring user settings to EEPROM (tks Pavel CO7WT)
+
 v1.25.1
 - some minor bug corrections to the touch keyer calibration code.
 
