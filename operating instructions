@@ -177,7 +177,7 @@ In the SETTINGS menu:
   - before going into the calibration mode, first set the VFO to 7100.0 kHz in LSB mode
     (the received signal may not yet be zero beat at this point)
   - go into the LSB calibration mode (1 short press)
-  - using the tuning pot, adjust the LSB offset for exactly zero beat
+  - using the tuning pot, adjust the correction value (ppm) for exactly zero beat
   - press the Function Button again to save the setting
   
 4 short presses - VFO frequency calibration in USB mode
