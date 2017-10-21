@@ -1,7 +1,11 @@
-User instructions for Raduino_v1.25.1
+User instructions for Raduino_v1.26
 
 After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
+Without any hardware modifications the sketch provides basic LSB functionality. Depending on the user's choice,
+additional functionality provided by this software can be activated by installing the related (minimal) hardware mods.
+See the table at https://github.com/amunters/bitx40/blob/master/hardware%20modification%20overview.PNG showing which
+mods are required for each function. Details of each mod are described below.
 
 10-TURN TUNING POT
 The default frequency span of the standard supplied 1-turn tuning pot is only 50 kHz.
@@ -9,10 +13,14 @@ If you install a 10-turn pot instead you can extend the span for full 40m band c
 https://github.com/amunters/bitx40/blob/master/Vishay%20100K%2C%2010-turn%20pot%20wire%20up.jpg
 Using the Function Button, go to the SETTINGS menu and set the desired pot span.
 
-Don't have a Function Button yet?
-If you don't install a pushbutton then the basic functions will still work.
-(of course you will miss the dual VFO, RIT, SPLIT, USB and CW capability then).
-Calibration can still be done in the old fashioned way using the CAL button (connector P1, pin A2 - red wire).
+FUNCTION BUTTON WIRING:
+Connect a momentary pushbutton between pin A3 (connector P1, orange wire) and ground.
+Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
+
+Don't have a Function Button (yet)?
+If you don't install a pushbutton then the basic LSB functions will still work.
+(of course you will miss the dual VFO, RIT, SPLIT, USB, CW, etc. then).
+Calibration can still be done in the old fashioned way by using the CAL button (connector P1, pin A2 - red wire).
 The tuning range setting can be 'hard coded' by editing lines 34-36 and adapting the values to your needs.
 
 PIN LAYOUT
@@ -117,13 +125,11 @@ Press the Function Button and then the SPOT button simultanuously to lock the di
 When the dial is locked tuning will be disabled, PTT and CW is still possible.
 Press the Function Button again to unlock.
 
-FUNCTION BUTTON WIRING:
-Connect a momentary pushbutton between pin A3 (connector P1, orange wire) and ground.
-Arduino's internal pull-up resistors are used, therefore do NOT install an external pull-up resistor!
-
 FUNCTION BUTTON USAGE:
 
 Several functions are available with just one pushbutton.
+Certain menu options will not appear when the related hardware mods are not installed.
+
 In normal operation mode:
 1 short press - toggle VFO A/B
 2 short presses - RIT on (PTT sense is required for this function) (press FB again to switch RIT off)
@@ -135,76 +141,8 @@ long press (> 1 second) - VFO A=B
 
 When you press the Fbutton VERY long (>3 seconds) you will enter the SETTINGS menu.
 In the SETTINGS menu:
-
-1 short press - VFO frequency calibration in LSB mode
-
-  - use another transceiver to generate a carrier at a known frequency (for example 7100.0 kHz)
-    (or ask a friend to transmit a carrier at a known frequency)
-  - before going into the calibration mode, first set the VFO to 7100.0 kHz in LSB mode
-    (the received signal may not yet be zero beat at this point)
-  - go into the LSB calibration mode (1 short press)
-  - using the tuning pot, adjust the LSB offset for exactly zero beat
-  - press the Function Button again to save the setting
-  
-2 short presses - VFO frequency calibration in USB mode
-
-  - USB calibration depends on LSB calibration, so make sure that LSB calibration has been done first!
-  - use another transceiver to generate a carrier at a known frequency (for example 7100.0 kHz)
-    (or ask a friend to transmit a carrier at a known frequency)
-  - before going into the calibration mode, first set the VFO to 7100.0 kHz in USB mode
-    (the received signal may not yet be zero beat at this point)
-  - go into the USB calibration mode (2 short presses)
-  - using the tuning pot, adjust the USB offset for exactly zero beat
-  - press the Function Button again to save the setting
-  
-3 short presses - set VFO drive level in LSB mode
-
-  - tune to 7199 kHz, on most BITX40 transceivers a strong birdie is heard in LSB mode
-  - give 3 short presses to the FB to enter the VFO drive level adjustment
-  - the default drive level in LSB mode is 4mA
-  - using the tuning pot, try different drive levels (2,4,6,8 mA) to minimize the strength of the birdie
-  - press the FB again to save the setting
-  
-4 short presses - set VFO drive level in USB mode
-
-  - tune to a weak signal
-  - give 4 short presses to the FB to enter the VFO drive level adjustment
-  - the default drive level in USB mode is 8mA
-  - using the tuning pot, try different drive levels (2,4,6,8 mA) for maximum signal to noise ratio
-  - press the FB again to save the setting
-  Extra Note: If the max. drive level of 8mA is still insufficient for USB mode, removal of C91 and C92 may help.
-  These caps attenuate the VFO signal at higher frequencies. They're actually only needed for the analog VFO
-  and can safely be removed if you use the Raduino DDS instead of the analog VFO.
-
-5 short presses - set tuning range (min frequency, max frequency, pot span)
-
-  - using the tuning pot, set the minimum tuning frequency and press the FB
-  - using the tuning pot, set the maximum tuning frequency and press the FB again
-  The default pot span is 50 kHz, this is OK for a standard 1-turn pot
-  If you install a multi-turn pot instead you can extend the pot span
-  - using the tuning pot, set the desired pot span
-    recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
-    (if the radio is mainly used for CW: a pot span of 10-25 kHz is recommended)
-  - press the FB again to save the setting
-
-6 short presses - set CW paramaters (sidetone pitch, CW-key type, semiQSK on/off, QSK delay)
-
- - the sidetone is generated
- - using the tuning pot, set the desired sidetone pitch
- - press the FB
- - using the tuning pot, select "straight" for straight CW key operation, "paddle" for automatic CW keyer,
-   "rev. paddle" for left-handed CW-operators, "bug", or "rev. bug".
- - press the FB
- - using the tuning pot, set the desired touch keyer sensitivity (0=OFF).
- - press the FB
- - using the tuning pot, select Auto-space ON or OFF
- - press the FB
- - using the tuning pot, select semiQSK ON or OFF
- - press the FB
- - using the tuning pot, set the desired timeout value (ms)
- - press the FB again to save the settings
  
-7 short presses - set frequency SCAN parameters (lower limit, upper limit, step size, step delay)
+1 short press - set frequency SCAN parameters (lower limit, upper limit, step size, step delay)
 
  - using the tuning pot, set the desired lower frequency scan limit
  - press the FB
@@ -215,12 +153,80 @@ In the SETTINGS menu:
  - using the tuning pot, set the desired scan step delay (also used for A/B monitoring mode)
  - press the FB again to save the settings
  
+2 short presses - set CW paramaters (sidetone pitch, CW-key type, semiQSK on/off, QSK delay)
+   (only available when PTTsense line is installed)
+
+ - using the tuning pot, select "straight" for straight CW key operation, "paddle" for automatic CW keyer,
+   "rev. paddle" for left-handed CW-operators, "bug", or "rev. bug".
+ - press the FB
+ - using the tuning pot, select Auto-space ON or OFF (only when automatic CW keyer was selected)
+ - press the FB
+ - using the tuning pot, set the desired touch keyer sensitivity (0=OFF) (only when touch sensor mod is installed)
+ - press the FB
+ - using the tuning pot, select semiQSK ON or OFF (only when TX-RX mod is installed)
+ - press the FB
+ - using the tuning pot, set the desired timeout value (ms) (only when semiQSK in ON)
+ - press the FB again to save the settings
+ - using the tuning pot, set the desired sidetone pitch
+ - press the FB
+
+3 short press - VFO frequency calibration in LSB mode
+
+  - use another transceiver to generate a carrier at a known frequency (for example 7100.0 kHz)
+    (or ask a friend to transmit a carrier at a known frequency)
+  - before going into the calibration mode, first set the VFO to 7100.0 kHz in LSB mode
+    (the received signal may not yet be zero beat at this point)
+  - go into the LSB calibration mode (1 short press)
+  - using the tuning pot, adjust the LSB offset for exactly zero beat
+  - press the Function Button again to save the setting
+  
+4 short presses - VFO frequency calibration in USB mode
+
+  - USB calibration depends on LSB calibration, so make sure that LSB calibration has been done first!
+  - use another transceiver to generate a carrier at a known frequency (for example 7100.0 kHz)
+    (or ask a friend to transmit a carrier at a known frequency)
+  - before going into the calibration mode, first set the VFO to 7100.0 kHz in USB mode
+    (the received signal may not yet be zero beat at this point)
+  - go into the USB calibration mode (2 short presses)
+  - using the tuning pot, adjust the USB offset for exactly zero beat
+  - press the Function Button again to save the setting
+  
+5 short presses - set VFO drive level in LSB mode
+
+  - tune to 7199 kHz, on most BITX40 transceivers a strong birdie is heard in LSB mode
+  - give 3 short presses to the FB to enter the VFO drive level adjustment
+  - the default drive level in LSB mode is 4mA
+  - using the tuning pot, try different drive levels (2,4,6,8 mA) to minimize the strength of the birdie
+  - press the FB again to save the setting
+  
+6 short presses - set VFO drive level in USB mode
+
+  - tune to a weak signal
+  - give 4 short presses to the FB to enter the VFO drive level adjustment
+  - the default drive level in USB mode is 8mA
+  - using the tuning pot, try different drive levels (2,4,6,8 mA) for maximum signal to noise ratio
+  - press the FB again to save the setting
+  Extra Note: If the max. drive level of 8mA is still insufficient for USB mode, removal of C91 and C92 may help.
+  These caps attenuate the VFO signal at higher frequencies. They're actually only needed for the analog VFO
+  and can safely be removed if you use the Raduino DDS instead of the analog VFO.
+
+7 short presses - set tuning range (min frequency, max frequency, pot span)
+
+  - using the tuning pot, set the minimum tuning frequency and press the FB
+  - using the tuning pot, set the maximum tuning frequency and press the FB again
+  The default pot span is 50 kHz, this is OK for a standard 1-turn pot
+  If you install a multi-turn pot instead you can extend the pot span
+  - using the tuning pot, set the desired pot span
+    recommended value: 50 kHz for a 1-turn pot, 200 kHz for a 10-turn pot
+    (if the radio is mainly used for CW: a pot span of 10-25 kHz is recommended)
+  - press the FB again to save the setting
+ 
 long press (>1 second) - return to the NORMAL mode
 
 All user settings are stored in EEPROM and retrieved during startup.
 
 When you keep the Fbutton pressed during power on all user settings will be erased and set back to "factory" values:
-VFO calibration offset (LSB): 0
+VFO calibration value: 0
 VFO calibration offset (USB): 1500 Hz
 VFO drive level (LSB): 4mA
 VFO drive level (USB): 8mA
