@@ -170,13 +170,13 @@ In the SETTINGS menu:
  - using the tuning pot, set the desired sidetone pitch
  - press the FB
 
-3 short press - VFO frequency calibration in LSB mode
+3 short presses - VFO frequency calibration in LSB mode
 
   - use another transceiver to generate a carrier at a known frequency (for example 7100.0 kHz)
     (or ask a friend to transmit a carrier at a known frequency)
   - before going into the calibration mode, first set the VFO to 7100.0 kHz in LSB mode
     (the received signal may not yet be zero beat at this point)
-  - go into the LSB calibration mode (1 short press)
+  - go into the LSB calibration mode (3 short press)
   - using the tuning pot, adjust the correction value (ppm) for exactly zero beat
   - press the Function Button again to save the setting
   
@@ -187,7 +187,7 @@ In the SETTINGS menu:
     (or ask a friend to transmit a carrier at a known frequency)
   - before going into the calibration mode, first set the VFO to 7100.0 kHz in USB mode
     (the received signal may not yet be zero beat at this point)
-  - go into the USB calibration mode (2 short presses)
+  - go into the USB calibration mode (4 short presses)
   - using the tuning pot, adjust the USB offset for exactly zero beat
   - press the Function Button again to save the setting
   
