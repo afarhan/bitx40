@@ -1,4 +1,7 @@
-User instructions for Raduino_v1.26
+User instructions for Raduino_v1.27
+
+IMPORTANT: This sketch version requires the library "PinChangeInterrupt" for interrupt handling. Use your IDE to install
+it before compiling this sketch.
 
 After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -124,6 +127,10 @@ DIAL LOCK FUNCTION
 Press the Function Button and then the SPOT button simultanuously to lock the dial.
 When the dial is locked tuning will be disabled, PTT and CW is still possible.
 Press the Function Button again to unlock.
+
+SPURIOUS BURST PREVENTION
+In order to prevent that a spurious burst is emitted when switching from RX to TX, a short delay (TX_DELAY) is applied.
+By default the TX_DELAY is set to 65 ms. The delay time can be adjusted by editing line 71 as necessary.
 
 FUNCTION BUTTON USAGE:
 
