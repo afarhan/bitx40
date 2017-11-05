@@ -17,7 +17,8 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 Revision record
 
 1.27
-- Improved the suppression of the spurious carrier when switching from RX to TX
+- Improved the suppression of the spurious carrier when switching from RX to TX.
+
 IMPORTANT: This sketch version requires the library "PinChangeInterrupt" for interrupt handling. Use your IDE to install
 it before compiling this sketch!
 
