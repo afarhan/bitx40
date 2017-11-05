@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.26 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -13,10 +13,10 @@
 
    To learn more about Arduino you may visit www.arduino.cc.
 
-   The Arduino works by first executing the code in a function called setup() and then it
+   The Arduino works by first executing the code in a routine called setup() and then it
    repeatedly keeps calling loop() forever. All the initialization code is kept in setup()
    and code to continuously sense the tuning knob, the function button, transmit/receive,
-   etc is all in the loop() function. If you wish to study the code top down, then scroll
+   etc is all in the loop() routine. If you wish to study the code top down, then scroll
    to the bottom of this file and read your way up.
 
    First we define all user parameters. The parameter values can be changed by the user
@@ -67,6 +67,9 @@
 // Function Button
 #define CLICK_DELAY 750           // max time (in ms) between function button clicks
 
+// RX-TX burst prevention
+#define TX_DELAY 65               // delay (ms) to prevent spurious burst that is emitted when switching from RX to TX
+
 // all variables that will be stored in EEPROM are contained in this 'struct':
 struct userparameters {
   byte raduino_version;                            // version identifier
@@ -115,9 +118,14 @@ struct userparameters u;
 #include <Wire.h>
 
 /**
+    The PinChangeInterrupt.h library is used for handling interrupts
+*/
+#include <PinChangeInterrupt.h> // https://github.com/NicoHood/PinChangeInterrupt
+
+/**
     The main chip which generates upto three oscillators of various frequencies in the
     Raduino is the Si5351a. To learn more about Si5351a you can download the datasheet
-    from www.silabs.com although, strictly speaking it is not a requirment to understand this code.
+    from www.silabs.com although, strictly speaking it is not a requirement to understand this code.
 
     We no longer use the standard SI5351 library because of its huge overhead due to many unused
     features consuming a lot of program space. Instead of depending on an external library we now use
@@ -267,12 +275,13 @@ byte param;
 /**
    Raduino needs to keep track of current state of the transceiver. These are a few variables that do it
 */
-unsigned long vfoA;
-unsigned long vfoB;
-byte mode = LSB;             // mode of the currently active VFO
-bool inTx = false;           // whether or not we are in transmit mode
-bool keyDown = false;        // whether we have a key up or key down
-unsigned long TimeOut = 0;   // time in ms since last key down
+unsigned long vfoA;               // the frequency (Hz) of VFO A
+unsigned long vfoB;               // the frequency (Hz) of VFO B
+byte mode = LSB;                  // mode of the currently active VFO
+bool inTx = false;                // whether or not we are in transmit mode
+bool keyDown = false;             // whether we have a key up or key down
+unsigned long TimeOut = 0;        // time in ms since last key down
+volatile bool TXstart = false;    // this flag will be set by the ISR as soon as the PTT is keyed
 
 //some variables used for the autokeyer function:
 
@@ -450,7 +459,7 @@ void printLine(char linenmbr, char *c) {
 }
 
 /**
-   Building upon the previous function,
+   Building upon the previous routine,
    update Display paints the first line as per current state of the radio
 */
 
@@ -506,7 +515,7 @@ void updateDisplay() {
   printLine(0, c);
 }
 
-// function to generate a bleep sound (FB menu)
+// routine to generate a bleep sound (FB menu)
 void bleep(int pitch, int duration, byte repeat) {
   for (byte i = 0; i < repeat; i++) {
     tone(CW_TONE, pitch);
@@ -672,7 +681,7 @@ void checkTX() {
       else                       // if VFO B is active
         u.mode_B = mode;
     }
-    delay(75);                   // wait till RX-TX burst is over
+    delay(TX_DELAY);             // wait till RX-TX burst is over
     setFrequency();              // enable CLK2 again
     shiftBase();
     updateDisplay();
@@ -683,16 +692,20 @@ void checkTX() {
   }
 
   if (!digitalRead(PTT_SENSE) && inTx) {
-    //go in receive mode
-    inTx = false;
-    updateDisplay();
-    if (u.splitOn) {             // when SPLIT was on, swap the VFOs back to original state
-      swapVFOs();
-    }
-    if (mode & 2) {              // if we are in CW mode
-      RXshift = u.CW_OFFSET;     // apply the frequency offset in RX
-      setFrequency();
-      shiftBase();
+    digitalWrite(TX_RX, 0);        // release the PTT switch - move the radio back to receive
+    delay(50);
+    if (!digitalRead(PTT_SENSE)) {
+      //go in receive mode
+      inTx = false;
+      updateDisplay();
+      if (u.splitOn) {             // when SPLIT was on, swap the VFOs back to original state
+        swapVFOs();
+      }
+      if (mode & 2) {              // if we are in CW mode
+        RXshift = u.CW_OFFSET;     // apply the frequency offset in RX
+        setFrequency();
+        shiftBase();
+      }
     }
   }
 }
@@ -752,9 +765,9 @@ void checkCW() {
     }
 
     if (!inTx && u.semiQSK) {          // switch to transmit mode if we are not already in it
-      digitalWrite(TX_RX, 1);          // activate the PTT switch - go in transmit mode
+      si5351bx_setfreq(2, 0);          // temporarily disable CLK2 to prevent spurious emission (tks Dave M0WID)
+      digitalWrite(TX_RX, 1);          // key the PTT - go in transmit mode
       inTx = true;
-      delay(5);                        // give the T/R relays a few ms to settle
 
       if (u.splitOn)                   // when SPLIT is on, swap the VFOs first
         swapVFOs();
@@ -767,8 +780,10 @@ void checkCW() {
         u.mode_B = mode;
 
       RXshift = RIT = RIT_old = 0;     // no frequency offset during TX
-      setFrequency();
+      delay(TX_DELAY);                 // wait till RX-TX burst is over
+      setFrequency();                  // enable CLK2 again
       shiftBase();
+      dit = dah = 0;                   // cancel the initial dit or dah
     }
   }
 
@@ -1226,10 +1241,10 @@ void swapVFOs() {
     vfoB = frequency;
     frequency = vfoA;
     if (!u.splitOn)
-      mode = u.mode_A;     // don't change the mode when SPLIT in on
+      mode = u.mode_A;     // don't change the mode when SPLIT is on
   }
 
-  else { //if VFO A is active
+  else {                   //if VFO A is active
     u.vfoActive = true;    // switch to VFO B
     vfoA = frequency;
     frequency = vfoB;
@@ -1357,7 +1372,7 @@ void VFOdrive() {
 }
 
 /*
-  this function allows the user to set the tuning range depending on the type of potentiometer
+  this routine allows the user to set the tuning range depending on the type of potentiometer
   for a standard 1-turn pot, a span of 50 kHz is recommended
   for a 10-turn pot, a span of 200 kHz is recommended
 */
@@ -1460,7 +1475,7 @@ void set_tune_range() {
   }
 }
 
-// this function allows the user to set the two CW parameters: CW-OFFSET (sidetone pitch) and CW-TIMEOUT.
+// this routine allows the user to set the two CW parameters: CW-OFFSET (sidetone pitch) and CW-TIMEOUT.
 
 void set_CWparams() {
   int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
@@ -1558,20 +1573,20 @@ void set_CWparams() {
             param++;                // no touch sensitivity setting when touch sensors are not installed
         }
         break;
-      case 2: // autospace
+      case 2:                       // autospace
         bleep(600, 50, 1);
         delay(200);
         if (!CapTouch_installed)
           param++;                  // no touch sensitivity setting when touch sensors are not installed
         break;
-      case 3: // touch keyer sensitivity
+      case 3:                       // touch keyer sensitivity
         calibrate_touch_pads();     // measure the base capacitance of the touch pads while they're not being touched
         bleep(600, 50, 1);
         delay(200);
         if (!TXRX_installed)
           param = param + 2;        // no Semi-QSK, QSK-delay settings when RX-TX line is not installed
         break;
-      case 4: // semiQSK on/off
+      case 4:                       // semiQSK on/off
         if (!u.semiQSK) {
           u.QSK_DELAY = 10;         // set QSKdelay to minimum when manual PTT is selected
           param++;                  // skip the QSKdelay setting when manual PTT is selected
@@ -1661,7 +1676,7 @@ void set_CWparams() {
   }
 }
 
-/* this function allows the user to set the 4 scan parameters: lower limit, upper limit, step size and step delay
+/* this routine allows the user to set the 4 scan parameters: lower limit, upper limit, step size and step delay
 */
 
 void scan_params() {
@@ -1804,13 +1819,36 @@ void scan_params() {
   }
 }
 
-// function to read the position of the tuning knob at high precision (Allard, PE1NWL)
+/* interrupt service routine
+  When the PTT is keyed (either manually or by the semiQSK function), normal program execution
+  will be interrupted and the interrupt service routine (ISR) will be executed. After that, normal
+  program execution will continue from the point it was interrupted.
+  The only thing this ISR does, is setting the TXstart flag. This flag is frequently polled by the
+  knob_position routine.
+  The knob_position routine takes 100 readings from the tuning pot for extra precision. However
+  this takes more time (about 10ms). Normally this is not a problem, however when we key the PTT
+  we need to quickly turn off the VFO in order to prevent spurious emission. In that case 10ms is
+  too much delay.
+  In order to prevent this delay, the knob-position routine keeps checking the TXstart flag
+  and when it is set it will terminate immediately.
+*/
+
+void ISRptt(void) {
+  TXstart = true;                       // the TXstart flag will be set as soon as the PTT is keyed
+}
+
+// routine to read the position of the tuning knob at high precision (Allard, PE1NWL)
 int knob_position() {
   unsigned long knob = 0;
   // the knob value normally ranges from 0 through 1023 (10 bit ADC)
   // in order to increase the precision by a factor 10, we need 10^2 = 100x oversampling
-  for (byte i = 0; i < 100; i++) {
-    knob = knob + analogRead(ANALOG_TUNING); // take 100 readings from the ADC
+  for (byte i = 0; i < 100; i++) { // it takes about 10 ms to run this loop 100 times
+    if (TXstart) {     // when the PTT was keyed, in order to prevent 10 ms delay:
+      TXstart = false; // reset the TXstart flag that was set by the interrupt service routine
+      return old_knob; // then exit this routine immediately and return the old knob value
+    }
+    else
+      knob = knob + analogRead(ANALOG_TUNING); // take 100 readings from the ADC
   }
   knob = (knob + 5L) / 10L; // take the average of the 100 readings and multiply the result by 10
   //now the knob value ranges from 0 through 10,230 (10x more precision)
@@ -1865,11 +1903,11 @@ void doRIT() {
 }
 
 /*
-   Function to align the current knob position with the current frequency
+   routine to align the current knob position with the current frequency
    If we switch between VFO's A and B, the frequency will change but the tuning knob
    is still in the same position. We need to apply some offset so that the new frequency
    corresponds with the current knob position.
-   This function reads the current knob position, then it shifts the baseTune value up or down
+   This routine reads the current knob position, then it shifts the baseTune value up or down
    so that the new frequency matches again with the current knob position.
 */
 
@@ -2121,42 +2159,42 @@ void touch_key() {
   static unsigned long DAHup = 0;
   static unsigned long DAHdown = 0;
 
-  digitalWrite(PULSE, LOW);                          // send LOW to the PULSE output
+  digitalWrite(PULSE, LOW);                            // send LOW to the PULSE output
   delayMicroseconds(base_sens_KEY + 25 - u.cap_sens);  // wait few microseconds for the KEY capacitance to discharge
-  if (digitalRead(KEY)) {                            // test if KEY input is still HIGH
-    KEYdown = millis();                              // KEY touch pad was touched
+  if (digitalRead(KEY)) {                              // test if KEY input is still HIGH
+    KEYdown = millis();                                // KEY touch pad was touched
     if (!capaKEY && millis() - KEYup > 1) {
       capaKEY = true;
       released = 0;
     }
   }
-  else {                                             // KEY touch pad was not touched
+  else {                                               // KEY touch pad was not touched
     KEYup = millis();
     if (capaKEY && millis() - KEYdown > 10)
       capaKEY = false;
   }
 
-  digitalWrite(PULSE, HIGH);                         // send HIGH to the PULSE output
-  delayMicroseconds(50);                             // allow the capacitance to recharge
+  digitalWrite(PULSE, HIGH);                           // send HIGH to the PULSE output
+  delayMicroseconds(50);                               // allow the capacitance to recharge
 
-  digitalWrite(PULSE, LOW);                          // send LOW to the PULSE output
+  digitalWrite(PULSE, LOW);                            // send LOW to the PULSE output
   delayMicroseconds(base_sens_DAH + 25 - u.cap_sens);  // wait few microseconds for the DAH capacitance to discharge
 
-  if (digitalRead(DAH)) {                            // test if DAH input is still HIGH
-    DAHdown = millis();                              // DAH touch pad was touched
+  if (digitalRead(DAH)) {                              // test if DAH input is still HIGH
+    DAHdown = millis();                                // DAH touch pad was touched
     if (!capaDAH && millis() - DAHup > 1) {
       capaDAH = true;
       released = 0;
     }
   }
-  else {                                             // DAH touch pad was not touched
+  else {                                               // DAH touch pad was not touched
     DAHup = millis();
     if (capaDAH && millis() - DAHdown > 10)
       capaDAH = false;
   }
 
-  digitalWrite(PULSE, HIGH);                         // send HIGH to the PULSE output
-  delayMicroseconds(50);                             // allow the capacitance to recharge
+  digitalWrite(PULSE, HIGH);                           // send HIGH to the PULSE output
+  delayMicroseconds(50);                               // allow the capacitance to recharge
 
   // put the touch sensors in the correct position
   if (u.key_type == 2 || u.key_type == 4) {
@@ -2256,8 +2294,8 @@ void calibrate_touch_pads() {
 */
 
 void setup() {
-  u.raduino_version = 26;
-  strcpy (c, "Raduino v1.26");
+  u.raduino_version = 27;
+  strcpy (c, "Raduino v1.27");
 
   lcd.begin(16, 2);
 
@@ -2303,6 +2341,10 @@ void setup() {
   // check if PTT sense line is installed
   PTTsense_installed = !digitalRead(PTT_SENSE);
   pinMode(PTT_SENSE, INPUT); //disable the internal pull-up
+
+  // attach interrupt to the PTT_SENSE input
+  // when PTT_SENSE goes from LOW to HIGH (so when PTT is keyed), execute the ISRptt routine
+  attachPCINT(digitalPinToPCINT(PTT_SENSE), ISRptt, RISING);
 
   printLine(0, c);
   delay(1000);
