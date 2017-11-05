@@ -6,6 +6,7 @@ The sketch provides additional features such as USB, CW, RIT/SPLIT, KEYER etc., 
 See the operating and modification instructions at https://github.com/amunters/bitx40/blob/master/operating%20instructions for full details.
 
 Note 1: Since v1.20 it is no longer required to download and install the SI5351 library. Minimalist routines to drive the SI5351 are now embedded in the sketch.
+
 Note 2: Since v1.27 the library "PinChangeInterrupt" is required for interrupt handling. Use your IDE to install
 it before compiling this sketch!
 
