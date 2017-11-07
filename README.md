@@ -7,7 +7,7 @@ The sketch provides additional features such as USB, CW, RIT/SPLIT, KEYER etc., 
 
 ![Hardware mod overview](https://github.com/amunters/bitx40/blob/master/hardware%20modification%20overview.PNG) 
 
-See the [operating and modification instructions](https://github.com/amunters/bitx40/blob/master/operating%20instructions) for full details.
+See the [operating and modification instructions](https://github.com/amunters/bitx40/blob/master/operating-instructions.md) for full details.
 
 **Note 1:** Since v1.20 it is no longer required to download and install the SI5351 library. Minimalist routines to drive the SI5351 are now embedded in the sketch.
 
