@@ -11,7 +11,7 @@ See the [operating and modification instructions](https://github.com/amunters/bi
 
 **Note 1:** Since v1.20 it is no longer required to download and install the SI5351 library. Minimalist routines to drive the SI5351 are now embedded in the sketch.
 
-**Note 2:** Since v1.27 the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) is required for interrupt handling. Use your IDE to install it before compiling this sketch!
+**Note 2:** Since v1.27 the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) is required for interrupt handling. Use your IDE to install it before compiling this sketch!
 
 ## Donate
 
@@ -22,10 +22,7 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 ## Revision record
 
 1.27
-- Improved the suppression of the spurious carrier when switching from RX to TX.
-
-IMPORTANT: This sketch version requires the library "PinChangeInterrupt" for interrupt handling. Use your IDE to install
-it before compiling this sketch!
+- Improved the suppression of the spurious carrier when switching from RX to TX. This function requires the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to install it before compiling this sketch!
 
 v1.26
 - Rearranged the menu structure, skip menu items that aren't available when related mods are not installed
