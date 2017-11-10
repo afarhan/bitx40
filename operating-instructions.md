@@ -104,7 +104,7 @@ The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) f
 ## CAPACITIVE TOUCH KEYER:
 
 The sketch supports Capacitive Touch functionality. With this feature it is possible to use touch sensors instead of a
-mechanical morse key or paddle. Straight key as well as automatic keyer operation is possible via the touch sensors.
+mechanical morse key or paddle. Manual straight key as well as automatic keyer operation is possible via the touch sensors.
 See the following demo: https://www.youtube.com/watch?v=9MWM6UVy9k4
 
 A minimal modification (add four resistors) is required for this function.
@@ -124,8 +124,7 @@ setting.
 
 The touch sensors are calibrated automatically at start up. If you want to recalibrate them, simply power OFF and ON again,
 while NOT touching the sensor pads. The sensor calibration data will be shown on the LCD display at start up.
-Note: When the touch keyer is enabled, normal paddle operation is not possible. If you want to use a standard paddle, set
-the touch sensor sensitivity to 0 (touch sensor OFF).
+Note: When the touch keyer is enabled, normal paddle operation is not possible. If you want to use a standard paddle, disable the touch sensors by setting the sensitivity to 0 (touch sensor OFF).
 
 ## CW-CARRIER WIRING:
 
