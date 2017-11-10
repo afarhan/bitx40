@@ -29,7 +29,7 @@ Don't have a Function Button (yet)?
 If you don't install a pushbutton then the basic LSB functions will still work.
 (of course you will miss the dual VFO, RIT, SPLIT, USB, CW, etc. then).
 Calibration can still be done in the old fashioned way by using the CAL button (connector P1, pin A2 - red wire).
-The tuning range setting can be 'hard coded' by editing lines 34-36 and adapting the values to your needs.
+The tuning range setting can be 'hard coded' by editing lines 34-36 and adapting the values to your needs. After recompiling and uploading to your Raduino, momentarily switch the red CAL wire to ground to initialize the new settings.
 
 ## PIN LAYOUT
 
