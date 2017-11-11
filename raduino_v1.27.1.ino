@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -471,28 +471,30 @@ void updateDisplay() {
   memset(b, 0, sizeof(b));
 
   if (locked || RUNmode == RUN_FINETUNING) {
-    ultoa((frequency + fine), b, DEC);
+    ultoa((frequency + fine), b, DEC); // construct the frequency string
     strcpy(c, "");
-    c[0] = b[0];
   }
   else {
-    ultoa((frequency + 50), b, DEC);
-    if (!u.vfoActive) // VFO A is active
-      strcpy(c, "A ");
+    ultoa((frequency + 50), b, DEC); // construct the frequency string
+    if (!u.vfoActive)
+      strcpy(c, "A ");        // display which VFO is active (A or B)
     else
       strcpy(c, "B ");
-    c[2] = b[0];
   }
 
-  strcat(c, ".");
-  strncat(c, &b[1], 3);
-  strcat(c, ".");
-  if (locked || RUNmode == RUN_FINETUNING)
-    strncat(c, &b[4], 3); // show two more digits
-  else
-    strncat(c, &b[4], 1);
+  byte p = strlen(b);         // the length of the frequency string (<10 Mhz: 7, >10 MHz: 8)
 
-  switch (mode) {
+  strncat(c, &b[0], p - 6);   // display the megahertzes
+  strcat(c, ".");
+  strncat(c, &b[p - 6], 3);   // display the kilohertzes
+  strcat(c, ".");
+
+  if (locked || RUNmode == RUN_FINETUNING)
+    strncat(c, &b[p - 3], 3); // display the frequency at 1 Hz precision
+  else
+    strncat(c, &b[p - 3], 1); // display the frequency at 100 Hz precision
+
+  switch (mode) {             // show the operating mode
     case LSB:
       strcat(c, " LSB");
       break;
@@ -507,12 +509,13 @@ void updateDisplay() {
       break;
   }
 
-  if (inTx)
+  if (inTx)                   // show the state (TX, SPLIT, or nothing)
     strcat(c, " TX");
   else if (u.splitOn)
     strcat(c, " SP");
 
-  printLine(0, c);
+  c[16] = '\0';               // cut off any excess characters (string length is max 16 postions)
+  printLine(0, c);            // finally print the constructed string to the first line of the display
 }
 
 // routine to generate a bleep sound (FB menu)
@@ -581,13 +584,6 @@ void calibrate() {
   // if Fbutton is pressed again (or when the CAL button is released), we save the setting
   if (!digitalRead(FBUTTON) || (calbutton && digitalRead(CAL_BUTTON))) {
     RUNmode = RUN_NORMAL;
-
-    if (mode == USB)
-      printLine(1, (char *)"USB Calibrated!");
-    else
-      printLine(1, (char *)"LSB Calibrated!");
-
-    delay(700);
     bleep(600, 50, 2);
     printLine(1, (char *)"--- SETTINGS ---");
     shiftBase(); //align the current knob position with the current frequency
@@ -682,8 +678,7 @@ void checkTX() {
         u.mode_B = mode;
     }
     delay(TX_DELAY);             // wait till RX-TX burst is over
-    setFrequency();              // enable CLK2 again
-    shiftBase();
+    shiftBase();                 // this will enable CLK2 again
     updateDisplay();
 
     if (u.splitOn) {             // when SPLIT is on, swap the VFOs
@@ -703,7 +698,6 @@ void checkTX() {
       }
       if (mode & 2) {              // if we are in CW mode
         RXshift = u.CW_OFFSET;     // apply the frequency offset in RX
-        setFrequency();
         shiftBase();
       }
     }
@@ -742,7 +736,11 @@ void checkCW() {
   if (!keyDown && ((u.cap_sens == 0 && !digitalRead(KEY)) || (u.cap_sens != 0 && capaKEY) || (u.key_type > 0 && ((u.cap_sens == 0 && !digitalRead(DAH)) || (u.cap_sens != 0 && capaDAH))))) {
     keyDown = true;
 
-    if (u.key_type > 0 && mode & 2) {        // if mode is CW and we are using the keyer
+    if (u.semiQSK) {
+      mode = mode | 2;                       // if semiQSK is on, switch to CW
+    }
+
+    if (u.key_type > 0 && mode & 2) {        // if mode is CW and if keyer is enabled
       keyeron = true;
       released = 0;
 
@@ -769,11 +767,6 @@ void checkCW() {
       digitalWrite(TX_RX, 1);          // key the PTT - go in transmit mode
       inTx = true;
 
-      if (u.splitOn)                   // when SPLIT is on, swap the VFOs first
-        swapVFOs();
-
-      mode = mode | 2;                 // go into to CW mode
-
       if (!u.vfoActive)                // if VFO A is active
         u.mode_A = mode;
       else                             // if VFO B is active
@@ -781,9 +774,14 @@ void checkCW() {
 
       RXshift = RIT = RIT_old = 0;     // no frequency offset during TX
       delay(TX_DELAY);                 // wait till RX-TX burst is over
-      setFrequency();                  // enable CLK2 again
-      shiftBase();
-      dit = dah = 0;                   // cancel the initial dit or dah
+
+      if (u.splitOn)                   // when SPLIT is on, swap the VFOs
+        swapVFOs();                    // this will also enable CLK2 again
+      else
+        shiftBase();                   // this will also enable CLK2 again
+
+      dit = dit + TX_DELAY + 7;        // delay the initial dit
+      dah = dah + TX_DELAY + 7;        // delay the initial dah
     }
   }
 
@@ -805,7 +803,6 @@ void checkCW() {
     inTx = false;
     TimeOut = 0;                     // reset the CW timeout counter
     RXshift = u.CW_OFFSET;           // apply the frequency offset in RX
-    setFrequency();
     shiftBase();
 
     if (u.splitOn)                   // then swap the VFOs back when SPLIT was on
@@ -1019,7 +1016,6 @@ void checkButton() {
     t2 = millis() - t1; //time elapsed since last button press
     if (pressed)
       if (clicks < 10 && t2 > 600 && t2 < 3000) { //detect long press to reset the VFO's
-        bleep(600, 50, 1);
         resetVFOs();
         delay(700);
         clicks = 0;
@@ -1157,22 +1153,18 @@ void checkButton() {
 
     case 1: // swap the VFOs
       swapVFOs();
-      delay(700);
       break;
 
     case 2: // toggle the RIT on/off
       toggleRIT();
-      delay(700);
       break;
 
     case 3: // toggle SPLIT on/off
       toggleSPLIT();
-      delay(700);
       break;
 
     case 4: // toggle the mode LSB/USB
       toggleMode();
-      delay(700);
       break;
 
     case 5: // start scan mode
@@ -1249,7 +1241,7 @@ void swapVFOs() {
     vfoA = frequency;
     frequency = vfoB;
     if (!u.splitOn)
-      mode = u.mode_B;     // don't change the mode when SPLIT in on
+      mode = u.mode_B;     // don't change the mode when SPLIT is on
   }
 
   if (mode & 1)            // if we are in UPPER side band mode
@@ -1322,7 +1314,7 @@ void resetVFOs() {
   vfoA = vfoB = frequency;
   u.mode_A = u.mode_B = mode;
   updateDisplay();
-  bleep(600, 50, 1);
+  bleep(600, 50, 2);
 }
 
 void VFOdrive() {
@@ -1346,13 +1338,12 @@ void VFOdrive() {
 
   if (!digitalRead(FBUTTON)) {
     RUNmode = RUN_NORMAL;
-    printLine(1, (char *)"Drive level set!");
 
     if (mode & 1)                            // if UPPER side band mode
       u.USBdrive = drive;
     else                                     // if LOWER side band mode
       u.LSBdrive = drive;
-    delay(700);
+
     bleep(600, 50, 2);
     printLine(1, (char *)"--- SETTINGS ---");
     shiftBase();                             //align the current knob position with the current frequency
@@ -1434,10 +1425,8 @@ void set_tune_range() {
         delay(200);
         break;
       case 3:
-        printLine(1, (char *)"Tune range set!");
         RUNmode = RUN_NORMAL;
         bleep(600, 50, 2);
-        delay(700);
         printLine(1, (char *)"--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
         break;
@@ -1600,8 +1589,6 @@ void set_CWparams() {
         break;
       case 6:
         RUNmode = RUN_NORMAL;
-        printLine(1, (char *)"CW params set!");
-        delay(700);
         bleep(600, 50, 2);
         printLine(1, (char *)"--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
@@ -1766,9 +1753,7 @@ void scan_params() {
         break;
 
       case 4: // save the scan step delay
-        printLine(1, (char *)"Scan params set!");
         RUNmode = RUN_NORMAL;
-        delay(700);
         bleep(600, 50, 2);
         printLine(1, (char *)"--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
@@ -2073,7 +2058,6 @@ void finetune() {
     RUNmode = RUN_NORMAL;
     frequency = frequency + fine; // apply the finetuning offset
     fine = 0;
-    setFrequency();
     shiftBase();
     old_knob = knob_position();
     if (clicks == 10)
@@ -2295,7 +2279,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 27;
-  strcpy (c, "Raduino v1.27");
+  strcpy (c, "Raduino v1.27.1");
 
   lcd.begin(16, 2);
 
