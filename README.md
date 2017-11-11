@@ -21,6 +21,12 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.1
+- fixed a bug that the spurious carrier burst was not suppressed in SPLIT mode
+- In semiQSK mode, the initial CW element is now delayed by 65ms (to prevent the carrier burst), instead of canceled
+- fixed a bug that the radio did not reliably switch from LSB to CWL in semiQSK mode
+- fixed a bug that the display got messed up when the VFO is above 10 MHz
+
 1.27
 - Improved the suppression of the spurious carrier when switching from RX to TX. This function requires the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to install it before compiling this sketch!
 
