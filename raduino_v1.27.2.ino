@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.2 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -687,7 +687,6 @@ void checkTX() {
   }
 
   if (!digitalRead(PTT_SENSE) && inTx) {
-    digitalWrite(TX_RX, 0);        // release the PTT switch - move the radio back to receive
     delay(50);
     if (!digitalRead(PTT_SENSE)) {
       //go in receive mode
@@ -798,7 +797,7 @@ void checkCW() {
   // if we are in semi-QSK mode and have a keyup for a "longish" time (QSK_DELAY value in ms)
   // then go back to RX
 
-  if (TimeOut > 0 && inTx && TimeOut < millis() && u.semiQSK) {
+  if (!keyeron && TimeOut > 0 && inTx && TimeOut < millis() && u.semiQSK) {
 
     inTx = false;
     TimeOut = 0;                     // reset the CW timeout counter
@@ -1464,7 +1463,7 @@ void set_tune_range() {
   }
 }
 
-// this routine allows the user to set the two CW parameters: CW-OFFSET (sidetone pitch) and CW-TIMEOUT.
+// this routine allows the user to set the six CW parameters
 
 void set_CWparams() {
   int knob = analogRead(ANALOG_TUNING); // get the current tuning knob position
@@ -2279,7 +2278,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 27;
-  strcpy (c, "Raduino v1.27.1");
+  strcpy (c, "Raduino v1.27.2");
 
   lcd.begin(16, 2);
 
