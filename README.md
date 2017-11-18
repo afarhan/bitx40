@@ -21,6 +21,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.2
+- fixed a bug that with short QSK DELAY time, the radio did not return from CW to SSB mode (tks Gary N3GO for testing)
+
 1.27.1
 - fixed a bug that the spurious carrier burst was not suppressed in CW-SPLIT mode
 - In semiQSK mode, the initial CW element is now delayed by 65ms (to prevent the carrier burst), instead of canceled
