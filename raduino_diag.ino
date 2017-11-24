@@ -220,7 +220,7 @@ char c[17], b[10], printBuff[2][17];
 
 #define PTT_SENSE (A0)
 #define KEY (A1)
-#define CAL_BUTTON (3)
+#define CAL_BUTTON (A2)
 #define FBUTTON (A3)
 #define ANALOG_TUNING (A7)
 
@@ -242,7 +242,7 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
 */
 
 #define PULSE (2)
-#define DAH (A2)
+#define DAH (3)
 #define SPOT (4)
 #define CW_TONE (5)
 #define CW_CARRIER (6)
@@ -876,7 +876,7 @@ void touch_key() {
 
 void setup() {
   u.raduino_version = 27;
-  strcpy (c, "Raduino Diag v1");
+  strcpy (c, "Raduino Diag v2");
 
   lcd.begin(16, 2);
 
