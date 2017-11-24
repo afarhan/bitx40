@@ -2,6 +2,17 @@
    Raduino_diag for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
+   
+   This sketch tests some basic hardware functions:
+   tuning pot reading
+   Function Button/ SPOT button switches
+   PTT switch
+   capacitive touch sensors
+   
+   Results are shown on the LCD display
+   additional messages are output to the serial monitor
+   (in the IDE, select tools => serial monitor)
+   
 */
 
 #define DEBUG_BOOT                     //uncomment this to print debug messages to the serial monitor
