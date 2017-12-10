@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.2 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.3 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -38,7 +38,7 @@
 // recommended pot span when radio is used mainly for CW: 10 to 25 kHz
 
 // USB/LSB parameters
-#define CAL_VALUE 0               // VFO calibration value
+#define CAL_VALUE 1575            // Initial VFO calibration value: 180 ppm
 #define OFFSET_USB 1500           // USB offset in Hz [accepted range -10000Hz to 10000Hz]
 #define VFO_DRIVE_LSB 4           // VFO drive level in LSB mode in mA [accepted values 2,4,6,8 mA]
 #define VFO_DRIVE_USB 8           // VFO drive level in USB mode in mA [accepted values 2,4,6,8 mA]
@@ -334,6 +334,7 @@ byte *paddleDAH = &_dah;         // Paddle DAH bind to DAH
 */
 
 #define bfo_freq (11998000UL)
+
 unsigned long baseTune = 7100000UL; // frequency (Hz) when tuning pot is at minimum position
 int old_knob = 0;
 int RXshift = 0;            // the actual frequency shift that is applied during RX depending on the operation mode
@@ -389,7 +390,7 @@ void si5351bx_init() {                  // Call once at power-up, start PLLA
   Wire.begin();
   i2cWrite(149, 0);                     // SpreadSpectrum off
   i2cWrite(3, si5351bx_clken);          // Disable all CLK output drivers
-  i2cWrite(183, SI5351BX_XTALPF << 6);  // Set 25mhz crystal load capacitance
+  i2cWrite(183, ((SI5351BX_XTALPF << 6) | 0x12)); // Set 25mhz crystal load capacitance (tks Daniel KB3MUN)
   msxp1 = 128 * SI5351BX_MSA - 512;     // and msxp2=0, msxp3=1, not fractional
   uint8_t  vals[8] = {0, 1, BB2(msxp1), BB1(msxp1), BB0(msxp1), 0, 0, 0};
   i2cWriten(26, vals, 8);               // Write to 8 PLLA msynth regs
@@ -2278,7 +2279,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 27;
-  strcpy (c, "Raduino v1.27.2");
+  strcpy (c, "Raduino v1.27.3");
 
   lcd.begin(16, 2);
 
@@ -2366,7 +2367,7 @@ void setup() {
   shiftBase(); //align the current knob position with the current frequency
 
   //display warning message when VFO calibration data was erased
-  if ((u.cal == 0) && (u.USB_OFFSET == 1500)) {
+  if ((u.cal == CAL_VALUE) && (u.USB_OFFSET == OFFSET_USB)) {
     printLine(1, (char *)"VFO uncalibrated");
     delay(1000);
   }
