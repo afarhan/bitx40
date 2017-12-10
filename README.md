@@ -21,6 +21,10 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.3
+- corrected the si5351 25mhz crystal load capacitance setting (tks Daniel KB3MUN)
+- changed the initial calibration value to 180 ppm
+
 1.27.2
 - fixed a bug that with short QSK DELAY time, the radio did not return from CW to SSB mode (tks Gary N3GO for testing)
 
