@@ -333,7 +333,7 @@ byte *paddleDAH = &_dah;         // Paddle DAH bind to DAH
     To stop the scanning the pot is moved back from the edge.
 */
 
-#define bfo_freq (11998000UL)
+#define bfo_freq (11998700UL)
 
 unsigned long baseTune = 7100000UL; // frequency (Hz) when tuning pot is at minimum position
 int old_knob = 0;
