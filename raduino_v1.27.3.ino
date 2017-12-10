@@ -2278,7 +2278,7 @@ void calibrate_touch_pads() {
 */
 
 void setup() {
-  u.raduino_version = 27;
+  u.raduino_version = 28;
   strcpy (c, "Raduino v1.27.3");
 
   lcd.begin(16, 2);
