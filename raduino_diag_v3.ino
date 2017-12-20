@@ -233,7 +233,7 @@ bool PTTsense_installed; //whether or not the PTT sense line is installed (detec
 */
 
 #define PULSE (2)
-#define DAH (A2)
+#define DAH (3)
 #define SPOT (4)
 #define CW_TONE (5)
 #define CW_CARRIER (6)
