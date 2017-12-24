@@ -108,6 +108,7 @@ mechanical morse key or paddle. Manual straight key as well as automatic keyer o
 See the following demo: https://www.youtube.com/watch?v=9MWM6UVy9k4
 
 A minimal modification (add four resistors) is required for this function.
+Note: some builders reported that the touch sensor wasn't reliably detected during power on, in that case add some small (3-22pF) capacitors to both inputs in order to slightly increase the internal 'base' capacitance.
 
 ![Capacitive Touch Keyer Mod](https://github.com/amunters/bitx40/blob/master/capacitive%20touch%20keyer%20modification.png)
 
