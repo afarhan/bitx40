@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.3 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.4 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -29,7 +29,7 @@
 */
 
 // *** USER PARAMETERS ***
-#define MY_CALLSIGN ""            // callsign here will display on line 2 when otherwise blank
+#define MY_CALLSIGN ""            // callsign here will display on line 2 when otherwise blank (tks Richard, KM6FME)
 
 // tuning range parameters
 #define MIN_FREQ 7000000UL        // absolute minimum tuning frequency in Hz
@@ -2280,7 +2280,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 28;
-  strcpy (c, "Raduino v1.27.3");
+  strcpy (c, "Raduino v1.27.4");
 
   lcd.begin(16, 2);
 
