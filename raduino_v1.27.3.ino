@@ -447,7 +447,7 @@ void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
    linenmbr = 1 is the lower line
 */
 
-void printLine(char linenmbr, char *c) {
+void printLine(char linenmbr, const char * const c) {
   if (strcmp(c, printBuff[linenmbr])) {     // only refresh the display when there was a change
     lcd.setCursor(0, linenmbr);             // place the cursor at the beginning of the selected line
     lcd.print(c);
