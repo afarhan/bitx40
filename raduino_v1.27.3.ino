@@ -29,6 +29,7 @@
 */
 
 // *** USER PARAMETERS ***
+#define MY_CALLSIGN ""            // callsign here will display on line 2 when otherwise blank
 
 // tuning range parameters
 #define MIN_FREQ 7000000UL        // absolute minimum tuning frequency in Hz
@@ -447,7 +448,7 @@ void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
    linenmbr = 1 is the lower line
 */
 
-void printLine(char linenmbr, char *c) {
+void printLine(char linenmbr, const char * const c) {
   if (strcmp(c, printBuff[linenmbr])) {     // only refresh the display when there was a change
     lcd.setCursor(0, linenmbr);             // place the cursor at the beginning of the selected line
     lcd.print(c);
@@ -586,7 +587,7 @@ void calibrate() {
   if (!digitalRead(FBUTTON) || (calbutton && digitalRead(CAL_BUTTON))) {
     RUNmode = RUN_NORMAL;
     bleep(600, 50, 2);
-    printLine(1, (char *)"--- SETTINGS ---");
+    printLine(1, "--- SETTINGS ---");
     shiftBase(); //align the current knob position with the current frequency
   }
 
@@ -973,12 +974,12 @@ void keyer() {
     printLine(1, c);
   }
   else if (locked)
-    printLine(1, (char *)"dial is locked");
+    printLine(1, "dial is locked");
   else if (clicks >= 10)
-    printLine(1, (char *)"--- SETTINGS ---");
+    printLine(1, "--- SETTINGS ---");
   else {
     RIT_old = 0;
-    printLine(1, (char *)" ");
+    printLine(1, " ");
   }
 }
 
@@ -1037,7 +1038,7 @@ void checkButton() {
 
       if (locked && digitalRead(SPOT)) {
         bleep(600, 50, 1);
-        printLine(1, (char *)"");
+        printLine(1, MY_CALLSIGN);
         delay(500);
         locked = false;
         shiftBase();
@@ -1051,7 +1052,7 @@ void checkButton() {
           bleep(1200, 50, 1);
           locked = true;
           updateDisplay();
-          printLine(1, (char *)"dial is locked");
+          printLine(1, "dial is locked");
           delay(500);
           clicks = 0;
           pressed = false;
@@ -1085,54 +1086,54 @@ void checkButton() {
         switch (clicks) {
           //Normal menu options
           case 1:
-            printLine(1, (char *)"Swap VFOs");
+            printLine(1, "Swap VFOs");
             break;
           case 2:
-            printLine(1, (char *)"RIT ON");
+            printLine(1, "RIT ON");
             break;
           case 3:
-            printLine(1, (char *)"SPLIT ON/OFF");
+            printLine(1, "SPLIT ON/OFF");
             break;
           case 4:
-            printLine(1, (char *)"Switch mode");
+            printLine(1, "Switch mode");
             break;
           case 5:
-            printLine(1, (char *)"Start freq scan");
+            printLine(1, "Start freq scan");
             break;
           case 6:
-            printLine(1, (char *)"Monitor VFO A/B");
+            printLine(1, "Monitor VFO A/B");
             break;
 
           //SETTINGS menu options
           case 11:
-            printLine(1, (char *)"Set scan params");
+            printLine(1, "Set scan params");
             break;
           case 12:
-            printLine(1, (char *)"Set CW params");
+            printLine(1, "Set CW params");
             break;
           case 13:
-            printLine(1, (char *)"LSB calibration");
+            printLine(1, "LSB calibration");
             break;
           case 14:
-            printLine(1, (char *)"USB calibration");
+            printLine(1, "USB calibration");
             break;
           case 15:
-            printLine(1, (char *)"VFO drive - LSB");
+            printLine(1, "VFO drive - LSB");
             break;
           case 16:
-            printLine(1, (char *)"VFO drive - USB");
+            printLine(1, "VFO drive - USB");
             break;
           case 17:
-            printLine(1, (char *)"Set tuning range");
+            printLine(1, "Set tuning range");
             break;
         }
       }
       else if ((millis() - t1) > 600 && (millis() - t1) < 800 && clicks < 10) // long press: reset the VFOs
-        printLine(1, (char *)"Reset VFOs");
+        printLine(1, "Reset VFOs");
 
       if ((millis() - t1) > 3000 && clicks < 10) { // VERY long press: go to the SETTINGS menu
         bleep(1200, 150, 3);
-        printLine(1, (char *)"--- SETTINGS ---");
+        printLine(1, "--- SETTINGS ---");
         clicks = 10;
       }
 
@@ -1140,7 +1141,7 @@ void checkButton() {
         bleep(1200, 150, 3);
         clicks = -1;
         pressed = false;
-        printLine(1, (char *)" --- NORMAL ---");
+        printLine(1, " --- NORMAL ---");
         delay(700);
       }
     }
@@ -1171,13 +1172,13 @@ void checkButton() {
       RUNmode = RUN_SCAN;
       TimeOut = millis() + u.scan_step_delay;
       frequency = u.scan_start_freq * 1000L;
-      printLine(1, (char *)"freq scanning");
+      printLine(1, "freq scanning");
       break;
 
     case 6: // Monitor mode
       RUNmode = RUN_MONITOR;
       TimeOut = millis() + u.scan_step_delay;
-      printLine(1, (char *)"A/B monitoring");
+      printLine(1, "A/B monitoring");
       break;
 
     // SETTINGS MENU
@@ -1310,7 +1311,7 @@ void SetSideBand(byte drivelevel) {
 
 // resetting the VFO's will set both VFO's to the current frequency and mode
 void resetVFOs() {
-  printLine(1, (char *)"VFO A=B !");
+  printLine(1, "VFO A=B !");
   vfoA = vfoB = frequency;
   u.mode_A = u.mode_B = mode;
   updateDisplay();
@@ -1345,7 +1346,7 @@ void VFOdrive() {
       u.LSBdrive = drive;
 
     bleep(600, 50, 2);
-    printLine(1, (char *)"--- SETTINGS ---");
+    printLine(1, "--- SETTINGS ---");
     shiftBase();                             //align the current knob position with the current frequency
   }
   else {
@@ -1427,7 +1428,7 @@ void set_tune_range() {
       case 3:
         RUNmode = RUN_NORMAL;
         bleep(600, 50, 2);
-        printLine(1, (char *)"--- SETTINGS ---");
+        printLine(1, "--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
         break;
     }
@@ -1590,7 +1591,7 @@ void set_CWparams() {
       case 6:
         RUNmode = RUN_NORMAL;
         bleep(600, 50, 2);
-        printLine(1, (char *)"--- SETTINGS ---");
+        printLine(1, "--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
         break;
     }
@@ -1633,7 +1634,7 @@ void set_CWparams() {
         if (u.cap_sens == 0)
           strcpy(c, "touch keyer OFF");
         else {
-          printLine(0, (char *)"Touch sensor");
+          printLine(0, "Touch sensor");
           itoa((u.cap_sens), b, DEC);
           strcpy(c, "sensitivity ");
           strcat(c, b);
@@ -1755,7 +1756,7 @@ void scan_params() {
       case 4: // save the scan step delay
         RUNmode = RUN_NORMAL;
         bleep(600, 50, 2);
-        printLine(1, (char *)"--- SETTINGS ---");
+        printLine(1, "--- SETTINGS ---");
         shiftBase(); //align the current knob position with the current frequency
         break;
     }
@@ -1919,7 +1920,7 @@ void doTuning() {
 
   // tuning is disabled during TX (only when PTT sense line is installed)
   if (inTx && clicks < 10 && abs(knob - old_knob) > 20 && !locked) {
-    printLine(1, (char *)"dial is locked");
+    printLine(1, "dial is locked");
     shiftBase();
     firstrun = true;
     return;
@@ -1941,7 +1942,7 @@ void doTuning() {
         baseTune = baseTune - 10000UL; // fast tune down in 10 kHz steps
       frequency = baseTune + (unsigned long)knob * (unsigned long)u.POT_SPAN / 10UL;
       if (clicks < 10)
-        printLine(1, (char *)"<<<<<<<"); // tks Paul KC8WBK
+        printLine(1, "<<<<<<<"); // tks Paul KC8WBK
       delay(300);
     }
     if (frequency <= u.LOWEST_FREQ)
@@ -1961,7 +1962,7 @@ void doTuning() {
         baseTune = baseTune + 10000UL; // fast tune up in 10 kHz steps
       frequency = baseTune + (unsigned long)knob * (unsigned long)u.POT_SPAN / 10UL;
       if (clicks < 10)
-        printLine(1, (char *)"         >>>>>>>"); // tks Paul KC8WBK
+        printLine(1, "         >>>>>>>"); // tks Paul KC8WBK
       delay(300);
     }
     if (frequency >= u.HIGHEST_FREQ) {
@@ -2044,9 +2045,9 @@ void finetune() {
     }
 
     if (mode & 2)
-      printLine(1, (char *)"SPOT + FINE TUNE");
+      printLine(1, "SPOT + FINE TUNE");
     else
-      printLine(1, (char *)"FINE TUNE");
+      printLine(1, "FINE TUNE");
 
     fine_old = fine;
   }
@@ -2061,14 +2062,14 @@ void finetune() {
     shiftBase();
     old_knob = knob_position();
     if (clicks == 10)
-      printLine(1, (char *)"--- SETTINGS ---");
+      printLine(1, "--- SETTINGS ---");
   }
 }
 
 void factory_settings() {
 
-  printLine(0, (char *)"loading standard");
-  printLine(1, (char *)"settings...");
+  printLine(0, "loading standard");
+  printLine(1, "settings...");
 
   EEPROM.put(0, u); // save all user parameters to EEPROM
   delay(1000);
@@ -2241,11 +2242,11 @@ void calibrate_touch_pads() {
   if (base_sens_KEY == 255 || base_sens_DAH == 255 || base_sens_KEY == 1 || base_sens_DAH == 1) {   // if inputs are still triggered even with max delay (255 us)
     CapTouch_installed = false;                         // then the base capacitance is too high (or the mod is not installed) so we can't use the touch keyer
     u.cap_sens = 0;                                     // turn capacitive touch keyer OFF
-    printLine(0, (char *)"touch sensors");
-    printLine(1, (char *)"not detected");
+    printLine(0, "touch sensors");
+    printLine(1, "not detected");
   }
   else if (u.cap_sens > 0) {
-    printLine(0, (char *)"touch key calibr");
+    printLine(0, "touch key calibr");
     strcpy(c, "DIT ");
     itoa(base_sens_KEY, b, DEC);
     strcat(c, b);
@@ -2256,7 +2257,7 @@ void calibrate_touch_pads() {
     printLine(1, c);
   }
   else
-    printLine(1, (char *)"touch keyer OFF");
+    printLine(1, "touch keyer OFF");
 
   delay(2000);
   updateDisplay();
@@ -2368,7 +2369,7 @@ void setup() {
 
   //display warning message when VFO calibration data was erased
   if ((u.cal == CAL_VALUE) && (u.USB_OFFSET == OFFSET_USB)) {
-    printLine(1, (char *)"VFO uncalibrated");
+    printLine(1, "VFO uncalibrated");
     delay(1000);
   }
 
@@ -2383,8 +2384,8 @@ void loop() {
         RUNmode = RUN_CALIBRATE;
         calbutton = true;
         factory_settings();
-        printLine(0, (char *)"Calibrating: Set");
-        printLine(1, (char *)"to zerobeat");
+        printLine(0, "Calibrating: Set");
+        printLine(1, "to zerobeat");
         delay(2000);
       }
       else {
@@ -2396,7 +2397,7 @@ void loop() {
           if (clicks == 0 || clicks == 10)
             EEPROM.put(0, u); // save all user parameters to EEPROM
           if (clicks == 0 && !ritOn && !locked)
-            printLine(1, (char *)"");
+            printLine(1, MY_CALLSIGN);
         }
         if (PTTsense_installed) {
           checkCW();
