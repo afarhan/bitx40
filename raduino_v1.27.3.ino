@@ -29,6 +29,7 @@
 */
 
 // *** USER PARAMETERS ***
+#define MY_CALLSIGN ""            // callsign here will display on line 2 when otherwise blank
 
 // tuning range parameters
 #define MIN_FREQ 7000000UL        // absolute minimum tuning frequency in Hz
