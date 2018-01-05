@@ -21,6 +21,10 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.4
+- Line 32: Added the ability to specify text (e.g. your callsign) on the second line of the LCD when it would otherwise be blank (tks Richard, VE3YSH).
+- some code clean up
+
 1.27.3
 - corrected the si5351 25mhz crystal load capacitance setting (tks Daniel KB3MUN)
 - changed the initial calibration value to 180 ppm
