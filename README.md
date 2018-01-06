@@ -21,6 +21,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.5
+- line 33: Added the ability to set the step delay time for fast tuning (when the tuning pot is at the upper/lower limit) (tks Bob, N4FV)
+
 1.27.4
 - Line 32: Added the ability to specify text (e.g. your callsign) on the second line of the LCD when it would otherwise be blank (tks Richard, VE3YSH).
 - some code clean up
