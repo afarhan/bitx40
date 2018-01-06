@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.4 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.5 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -30,6 +30,7 @@
 
 // *** USER PARAMETERS ***
 #define MY_CALLSIGN ""            // callsign here will display on line 2 when otherwise blank (tks Richard, VE3YSH)
+#define FAST_TUNE_DELAY 300       // fast tuning step delay in ms (when tuning pot is at the upper or lower limit)(tks Bob, N4FV)
 
 // tuning range parameters
 #define MIN_FREQ 7000000UL        // absolute minimum tuning frequency in Hz
@@ -1943,7 +1944,7 @@ void doTuning() {
       frequency = baseTune + (unsigned long)knob * (unsigned long)u.POT_SPAN / 10UL;
       if (clicks < 10)
         printLine(1, "<<<<<<<"); // tks Paul KC8WBK
-      delay(300);
+      delay(FAST_TUNE_DELAY);
     }
     if (frequency <= u.LOWEST_FREQ)
       baseTune = frequency = u.LOWEST_FREQ;
@@ -1963,7 +1964,7 @@ void doTuning() {
       frequency = baseTune + (unsigned long)knob * (unsigned long)u.POT_SPAN / 10UL;
       if (clicks < 10)
         printLine(1, "         >>>>>>>"); // tks Paul KC8WBK
-      delay(300);
+      delay(FAST_TUNE_DELAY);
     }
     if (frequency >= u.HIGHEST_FREQ) {
       baseTune = u.HIGHEST_FREQ - (u.POT_SPAN * 1000UL);
@@ -2184,6 +2185,7 @@ void touch_key() {
   // put the touch sensors in the correct position
   if (u.key_type == 2 || u.key_type == 4) {
     // swap capaKEY and capaDAH if paddle is reversed
+    // a nerdy way to swap two variables without having to use an extra temp variable
     capaKEY = capaKEY xor capaDAH;
     capaDAH = capaKEY xor capaDAH;
     capaKEY = capaKEY xor capaDAH;
@@ -2280,7 +2282,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 28;
-  strcpy (c, "Raduino v1.27.4");
+  strcpy (c, "Raduino v1.27.5");
 
   lcd.begin(16, 2);
 
