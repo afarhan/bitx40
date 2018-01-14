@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.5 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.6 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -67,7 +67,7 @@
 #define SCAN_STEP_DELAY 500       // Scan step delay in ms [accepted range 0-2000 ms]
 
 // Function Button
-#define CLICK_DELAY 750           // max time (in ms) between function button clicks
+#define CLICK_DELAY 1500          // max time (in ms) between function button clicks
 
 // RX-TX burst prevention
 #define TX_DELAY 65               // delay (ms) to prevent spurious burst that is emitted when switching from RX to TX
@@ -1285,9 +1285,9 @@ void toggleSPLIT() {
 
 void toggleMode() {
   if (PTTsense_installed && !u.semiQSK)
-    mode = (mode + 1) & 3; // rotate through LSB-USB-CWL-CWU
+    mode = (mode + 1) & 3; // if not semiQSK: rotate through LSB-USB-CWL-CWU
   else
-    mode = (mode + 1) & 1; // switch between LSB and USB only (no CW)
+    mode = mode xor 1;     // if semiQSK: toggle between LSB and USB (or between CWL and CWU, tks Michael VE3WMB)
 
   if (mode & 2)            // if we are in CW mode
     RXshift = u.CW_OFFSET;
@@ -1920,7 +1920,7 @@ void doTuning() {
   int knob = analogRead(ANALOG_TUNING) * 100000 / 10230; // get the current tuning knob position
 
   // tuning is disabled during TX (only when PTT sense line is installed)
-  if (inTx && clicks < 10 && abs(knob - old_knob) > 20 && !locked) {
+  if (inTx && clicks < 10 && abs(knob - old_knob) > 50 && !locked) {
     printLine(1, "dial is locked");
     shiftBase();
     firstrun = true;
@@ -1935,7 +1935,7 @@ void doTuning() {
   // the knob is fully on the low end, do fast tune: move down by 10 Khz and wait for 300 msec
   // if the POT_SPAN is very small (less than 25 kHz) then use 1 kHz steps instead
 
-  if (knob == 0) {
+  if (knob == 0 && frequency != u.LOWEST_FREQ) {
     if (frequency > u.LOWEST_FREQ) {
       if (u.POT_SPAN < 25)
         baseTune = baseTune - 1000UL; // fast tune down in 1 kHz steps
@@ -1946,7 +1946,7 @@ void doTuning() {
         printLine(1, "<<<<<<<"); // tks Paul KC8WBK
       delay(FAST_TUNE_DELAY);
     }
-    if (frequency <= u.LOWEST_FREQ)
+    if (frequency < u.LOWEST_FREQ)
       baseTune = frequency = u.LOWEST_FREQ;
     setFrequency();
     old_knob = 0;
@@ -1955,7 +1955,7 @@ void doTuning() {
   // the knob is full on the high end, do fast tune: move up by 10 Khz and wait for 300 msec
   // if the POT_SPAN is very small (less than 25 kHz) then use 1 kHz steps instead
 
-  else if (knob == 10000) {
+  else if (knob == 10000 && frequency != u.HIGHEST_FREQ) {
     if (frequency < u.HIGHEST_FREQ) {
       if (u.POT_SPAN < 25)
         baseTune = baseTune + 1000UL; // fast tune up in 1 kHz steps
@@ -1966,7 +1966,7 @@ void doTuning() {
         printLine(1, "         >>>>>>>"); // tks Paul KC8WBK
       delay(FAST_TUNE_DELAY);
     }
-    if (frequency >= u.HIGHEST_FREQ) {
+    if (frequency > u.HIGHEST_FREQ) {
       baseTune = u.HIGHEST_FREQ - (u.POT_SPAN * 1000UL);
       frequency = u.HIGHEST_FREQ;
     }
@@ -2282,12 +2282,12 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 28;
-  strcpy (c, "Raduino v1.27.5");
+  strcpy (c, "Raduino v1.27.6");
 
   lcd.begin(16, 2);
 
   // Start serial and initialize the Si5351
-  Serial.begin(9600);
+  //Serial.begin(9600);
   analogReference(DEFAULT);
   //Serial.println("*Raduino booting up");
 
