@@ -140,7 +140,7 @@ As a result a CW carrier will be generated.
 Note: If the carrier is not generated at full output power, you may need to reduce the 4.7K series resistor to a lower value
 for more drive. However try to keep it as high as possible to keep a clean CW signal. Never use a resistor less than 1K!
 Extra tip: For tuning purposes a reduced carrier is usually desired. You can optionally connect a 100K pot in series with the
-10K resistor, this will allow you to reduce the strength of the carrier to a suitable level.
+4.7K resistor, this will allow you to reduce the strength of the carrier to a suitable level.
 
 The CW-CARRIER is only required for CW functionality. If you don't install this line everything else
 will still work normally.
