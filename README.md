@@ -21,6 +21,12 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.6
+- improved the code so that the si5351 does not keep receiving tuning updates once the frequency has reached the upper or lower limit
+- corrected a bug that when semiQSK is ON, switching between modes did not work correctly for CWL/CWU.
+- increased the default delay time for the Function Button for easier operation
+- updated the instructions for the CW-CARRIER mod: Advise to use a 4.7K resistor instead of 10K so as to ensure full output power in CW
+
 1.27.5
 - line 33: Added the ability to set the step delay time for fast tuning (when the tuning pot is at the upper/lower limit) (tks Bob, N4FV)
 
