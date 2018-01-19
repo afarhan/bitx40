@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.6 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.27.7 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -2282,7 +2282,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 28;
-  strcpy (c, "Raduino v1.27.6");
+  strcpy (c, "Raduino v1.27.7");
 
   lcd.begin(16, 2);
 
@@ -2327,11 +2327,6 @@ void setup() {
   pinMode(PTT_SENSE, INPUT_PULLUP);
   // check if PTT sense line is installed
   PTTsense_installed = !digitalRead(PTT_SENSE);
-  pinMode(PTT_SENSE, INPUT); //disable the internal pull-up
-
-  // attach interrupt to the PTT_SENSE input
-  // when PTT_SENSE goes from LOW to HIGH (so when PTT is keyed), execute the ISRptt routine
-  attachPCINT(digitalPinToPCINT(PTT_SENSE), ISRptt, RISING);
 
   printLine(0, c);
   delay(1000);
@@ -2340,6 +2335,12 @@ void setup() {
   EEPROM.get(0, u);
 
   if (PTTsense_installed) {
+    pinMode(PTT_SENSE, INPUT); //disable the internal pull-up
+
+    // attach interrupt to the PTT_SENSE input
+    // when PTT_SENSE goes from LOW to HIGH (so when PTT is keyed), execute the ISRptt routine
+    attachPCINT(digitalPinToPCINT(PTT_SENSE), ISRptt, RISING);
+    
     calibrate_touch_pads();  // measure the base capacitance of the touch pads while they're not being touched
   }
 
