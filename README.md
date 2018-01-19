@@ -21,6 +21,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.27.7
+- Slightly revised the code so that interrupts are only enabled when the PTTsense mod is installed
+
 1.27.6
 - improved the code so that the si5351 does not keep receiving tuning updates once the frequency has reached the upper or lower limit
 - corrected a bug that when semiQSK is ON, switching between modes did not work correctly for CWL/CWU.
