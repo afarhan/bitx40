@@ -1,7 +1,6 @@
 ## User instructions for Raduino_v1.27
 
-**IMPORTANT**: This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to install
-it before compiling this sketch.
+**IMPORTANT**: This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](https://github.com/amunters/bitx40/blob/master/library-install.md) it before compiling this sketch!
 
 After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
