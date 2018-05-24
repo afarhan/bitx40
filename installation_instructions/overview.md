@@ -1,6 +1,7 @@
 ## installation instructions
+##         OVERVIEW
 
-1. Install Arduino IDE
+1. Install the Arduino IDE
 
 2. Install the PinChangeInterrupt Library
 
