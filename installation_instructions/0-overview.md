@@ -5,7 +5,7 @@
 
 2. [Install](https://github.com/amunters/bitx40/blob/master/library-install.md) the PinChangeInterrupt Library
 
-3. Download the Raduino sketch
+3. [Download](https://github.com/amunters/bitx40/blob/master/installation_instructions/download-sketch.md) the Raduino sketch
 
 4. Compile the Raduino sketch
 
