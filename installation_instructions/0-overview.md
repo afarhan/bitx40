@@ -7,14 +7,16 @@
 
 3. [Download](https://github.com/amunters/bitx40/blob/master/installation_instructions/2-download-sketch.md) the Raduino sketch
 
-4. Compile the Raduino sketch
+4. [Open](https://github.com/amunters/bitx40/blob/master/installation_instructions/3-open-sketch.md) the Raduino sketch
 
-5. Power OFF the radio
+5. [Compile](https://github.com/amunters/bitx40/blob/master/installation_instructions/4-compile-sketch.md) the Raduino sketch
 
-6. Connect the USB cable
+6. Power OFF the radio
 
-7. Upload the firmware to the Raduino
+7. Connect the USB cable
 
-8. Disconnect the USB cable
+8. Upload the firmware to the Raduino
 
-8. Power ON the radio
+9. Disconnect the USB cable
+
+10. Power ON the radio
