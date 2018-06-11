@@ -15,7 +15,9 @@
 
 7. Connect the USB cable
 
-8. Upload the firmware to the Raduino
+   The Raduino display will light up because at this time it receives power from the PC via the USB cable (the radio will not work though).
+
+8. [Upload](5-upload-sketch.md) the firmware to the Raduino
 
 9. Disconnect the USB cable
 
