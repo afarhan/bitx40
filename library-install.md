@@ -6,20 +6,20 @@ You only need to do this once.
 
 1. Go to 'Sketch' => 'Include Library' => 'Manage Libraries...':
 
-![libray-install1](https://github.com/amunters/bitx40/blob/master/library-install1.PNG)
+![libray-install1](library-install1.PNG)
 
 2. The Library Manager will be started. Wait until the list of installed libraries is updated:
 
-![libray-install2](https://github.com/amunters/bitx40/blob/master/library-install2.PNG)
+![libray-install2](library-install2.PNG)
 
 3. In the search box, enter "pinchangeinterrupt":
 
-![libray-install3](https://github.com/amunters/bitx40/blob/master/library-install3.PNG)
+![libray-install3](library-install3.PNG)
 
 4. Select the libary named PinChangeInterrupt by NicoHood, then press "install":
 
-![libray-install4](https://github.com/amunters/bitx40/blob/master/library-install4.PNG)
+![libray-install4](library-install4.PNG)
 
 5. Wait until the installation is completed, then press "close":
 
-![libray-install5](https://github.com/amunters/bitx40/blob/master/library-install5.PNG)
+![libray-install5](library-install5.PNG)
