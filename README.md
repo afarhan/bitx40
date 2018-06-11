@@ -5,13 +5,13 @@ BITX40 sketch for Raduino
 This sketch is intended as universal, standard Raduino software that should always work, even on a unmodified out-of-the-box BITX40 + raduino board. Without any hardware modifications the sketch provides the standard basic LSB functionality.
 The sketch provides additional features such as USB, CW, RIT/SPLIT, KEYER etc., but these will only become functional when the related (minimal) hardware mods are made. 
 
-![Hardware mod overview](https://github.com/amunters/bitx40/blob/master/hardware%20modification%20overview.PNG) 
+![Hardware mod overview](hardware%20modification%20overview.PNG) 
 
-See the [operating and modification instructions](https://github.com/amunters/bitx40/blob/master/operating-instructions.md) for full details.
+See the [operating and modification instructions](operating-instructions.md) for full details.
 
 **Note 1:** Since v1.20 it is no longer required to download and install the SI5351 library. Minimalist routines to drive the SI5351 are now embedded in the sketch.
 
-**Note 2:** Since v1.27 the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) is required for interrupt handling. Use your IDE to [install](https://github.com/amunters/bitx40/blob/master/library-install.md) it before compiling this sketch!
+**Note 2:** Since v1.27 the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) is required for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
 ## Donate
 
@@ -51,7 +51,7 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 - fixed a bug that the display got messed up when the VFO is above 10 MHz
 
 1.27
-- Improved the suppression of the spurious carrier when switching from RX to TX. This function requires the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](https://github.com/amunters/bitx40/blob/master/library-install.md) it before compiling this sketch!
+- Improved the suppression of the spurious carrier when switching from RX to TX. This function requires the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
 v1.26
 - Rearranged the menu structure, skip menu items that aren't available when related mods are not installed
