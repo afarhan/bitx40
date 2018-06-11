@@ -1,6 +1,6 @@
 ## User instructions for Raduino_v1.27
 
-**IMPORTANT**: This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](https://github.com/amunters/bitx40/blob/master/library-install.md) it before compiling this sketch!
+**IMPORTANT**: This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
 After a version update all calibration data, drive level settings, etc will be reset to 'factory' values.
 Before updating note down your cal values etc. After the update use the Function Button to set them back again.
@@ -8,14 +8,14 @@ Without any hardware modifications the sketch provides basic LSB functionality. 
 additional functionality provided by this software can be activated by installing the related (minimal) hardware mods.
 See the table below showing which mods are required for each function. Details of each mod are described below.
 
-![Table of hardware modifications](https://github.com/amunters/bitx40/blob/master/hardware%20modification%20overview.PNG)
+![Table of hardware modifications](hardware%20modification%20overview.PNG)
 
 ## 10-TURN TUNING POT
 
 The default frequency span of the standard supplied 1-turn tuning pot is only 50 kHz.
 If you install a 10-turn pot instead you can extend the span for full 40m band coverage.
 
-![Image of 10-turn pot hookup](https://github.com/amunters/bitx40/blob/master/Vishay%20100K%2C%2010-turn%20pot%20wire%20up.jpg)
+![Image of 10-turn pot hookup](Vishay%20100K%2C%2010-turn%20pot%20wire%20up.jpg)
 
 Using the Function Button, go to the SETTINGS menu and [set the desired pot span](#tuning-range).
 
@@ -32,7 +32,7 @@ The tuning range setting can be 'hard coded' by editing lines 34-36 and adapting
 
 ## PIN LAYOUT
 
-![Raduino pin layout](https://github.com/amunters/bitx40/blob/master/raduino_pin_layout.png)
+![Raduino pin layout](raduino_pin_layout.png)
 
 ### Connector P1 (8 pin)
 
@@ -74,7 +74,7 @@ The 5 pin header
 
 Connect pin A0 (connector P1, black wire) via a 10K resistor to the output of U3 (LM7805 regulator) on the BITX40 board.
 
-![PTT Sense wiring](https://github.com/amunters/bitx40/blob/master/PTT%20SENSE%20wiring.png)
+![PTT Sense wiring](PTT%20SENSE%20wiring.png)
 
 When the PTT is not pressed (RX mode), the regulator will be off, so pin A0 will see 0V (LOW).
 When the PTT is pressed (TX mode), the regulator will be on, so pin A0 will see +5V (HIGH).
@@ -100,6 +100,10 @@ Connect the 'dah' contact to Raduino pin D3 (connector P3).
 It is recommended to install 1K series resistors to protect the Arduino inputs.
 The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality and the paddles can be reversed.
 
+## CW keyer speed control:
+
+The speed can be controlled from the front panel (range 1-50 WPM). While keying, press and release the FB to increase the speed, or the SPOT button to reduce the speed. The CW speed setting is memorized in EEPROM.
+
 ## CAPACITIVE TOUCH KEYER:
 
 The sketch supports Capacitive Touch functionality. With this feature it is possible to use touch sensors instead of a
@@ -109,7 +113,7 @@ See the following demo: https://www.youtube.com/watch?v=9MWM6UVy9k4
 A minimal modification (add four resistors) is required for this function.
 Note: some builders reported that the touch sensor wasn't reliably detected during power on, in that case add some small (3-22pF) capacitors to both inputs in order to slightly increase the internal 'base' capacitance.
 
-![Capacitive Touch Keyer Mod](https://github.com/amunters/bitx40/blob/master/capacitive%20touch%20keyer%20modification.png)
+![Capacitive Touch Keyer Mod](capacitive%20touch%20keyer%20modification.png)
 
 The capacitive touch sensors are disabled by default. To enable them, go to the SETTINGS menu and to 'CW parameters' =>
 'Touch sensor', and use the tuning knob to set the desired touch sensor sensitivity.
@@ -131,7 +135,7 @@ Note: When the touch keyer is enabled, normal paddle operation is not possible. 
 This is required for CW operation (or when you want to generate a carrier for tuning)
 Connect a wire from Raduino ouput D6 (connector P3, pin 15), via a 4.7K series resistor, to the input of the mixer.
 
-![CW Carrier Wiring](https://github.com/amunters/bitx40/blob/master/CW-CARRIER%20wiring.png)
+![CW Carrier Wiring](CW-CARRIER%20wiring.png)
 
 When the key is down ouput D6 will be HIGH. This injects some DC current into the mixer so that it becomes unbalanced.
 As a result a CW carrier will be generated.
@@ -149,7 +153,7 @@ will still work normally.
 A side tone is available at Raduino output D5 (connector P3, pin 14). This signal can be fed to the speaker/headphones
 in parallel to the output from the existing audio amplifier.
 
-![CW Side Tone Wiring](https://github.com/amunters/bitx40/blob/master/sidetone%20wiring.png)
+![CW Side Tone Wiring](sidetone%20wiring.png)
 
 The desired side tone pitch can be set using the Function Button in the SETTINGS menu.
 The CW-side tone is only used for CW operation. If you don't install this line everything else
@@ -157,7 +161,7 @@ will still work normally.
 
 ## TX-RX WIRING:
 
-![TX-RX Wiring](https://github.com/amunters/bitx40/blob/master/TX-RX%20line%20wiring.png)
+![TX-RX Wiring](TX-RX%20line%20wiring.png)
 
 This is required for CW operation.
 
