@@ -100,7 +100,7 @@ Connect the 'dah' contact to Raduino pin D3 (connector P3).
 It is recommended to install 1K series resistors to protect the Arduino inputs.
 The built-in keyer provides Iambic mode A and 'bug'-mode (Vibroplex emulation) functionality and the paddles can be reversed.
 
-## CW keyer speed control:
+## CW KEYER SPEED CONTROL:
 
 The speed can be controlled from the front panel (range 1-50 WPM). While keying, press and release the FB to increase the speed, or the SPOT button to reduce the speed. The CW speed setting is memorized in EEPROM.
 
