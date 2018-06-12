@@ -14,7 +14,6 @@
 6. Power OFF the radio
 
 7. Connect the USB cable
-(the Raduino display will light up because at this time it receives power from the PC via the USB cable - the radio itself will not work though).
 
 8. [Upload](#uploading-the-sketch) the firmware to the Raduino board
 
@@ -175,6 +174,10 @@ When the compilation is completed following screen will be shown:
 
 ## Uploading the sketch
 
+First power OFF the radio
+Then connect the USB cable.
+The Raduino display will light up because at this time it receives power from the PC via the USB cable - the radio itself will not work though.
+
 In the IDE, press the "upload" button:
 
 ![upload-sketch1](upload-sketch1.png)
@@ -194,3 +197,10 @@ Uploading is completed:
 The Raduino will boot up again, the version number of the new firmware will briefly be shown on the display:
 
 ![upload-sketch4](upload-sketch4.png)
+
+Disconnect the USB cable.
+
+Power ON the radio. The Raduino will boot up.
+
+Enjoy the new firmware. Happy BitX-ing!
+
