@@ -22,7 +22,7 @@
 
 10. Power ON the radio
 
-#### Installing the Arduino IDE
+## Installing the Arduino IDE
 
 The Arduino IDE (Integrated Development Environment) is a piece of software that is needed to "compile" the software and then upload it to the Arduino microcontroller chip.
 The Raduino software (or "sketch") is written in C (a programming language). The program statements in the sketch must be "translated" to digital instruction codes that the Arduino microcontroller can understand and execute. This translation process is called "compiling".
@@ -79,7 +79,7 @@ Then go to "Tools" => "Programmer:" => select AVRISP mkii:
 
 ![IDEinstall11](IDEinstall11.png)
 
-#### Installing the PinChangeInterrupt Library
+## Installing the PinChangeInterrupt Library
 
 This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling.
 This is a non-standard library (it is not installed by default). Execute the following steps to install it onto your PC.
@@ -105,7 +105,7 @@ You only need to do this once.
 
 ![libray-install5](library-install5.PNG)
 
-#### Downloading the sketch
+## Downloading the sketch
 
 On the github page, click the green button "Clone or download":
 
@@ -141,7 +141,7 @@ The newly created folder "bitx40-master" contains several files. One of them is 
 
 ![download-sketch8](open_sketch1.png)
 
-#### Opening the sketch
+## Opening the sketch
 
 In the folder "bitx40-master", locate the file "raduino_v1.27.7.ino" and double-click it:
 
@@ -159,7 +159,7 @@ The sketch will now be opened and the program code will be shown in your IDE:
 
 ![open-sketch3](open_sketch3.PNG)
 
-#### Compiling the sketch
+## Compiling the sketch
 
 In the IDE, press the "verify/compile" button:
 
@@ -173,7 +173,7 @@ When the compilation is completed following screen will be shown:
 
 ![compile-sketch3](compile_sketch3.png)
 
-#### Uploading the sketch
+## Uploading the sketch
 
 In the IDE, press the "upload" button:
 
