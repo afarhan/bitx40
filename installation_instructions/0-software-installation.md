@@ -1,4 +1,5 @@
-# INSTALLATION INSTRUCTIONS
+# INSTALLATION INSTRUCTIONS (for Windows 10)
+
 ## OVERVIEW
 
 1. [Install](#installing-the-arduino-ide) the Arduino IDE on your PC
