@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.27.7 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.28 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -38,6 +38,13 @@
 #define TUNING_POT_SPAN 50        // tuning pot span in kHz [accepted range 10-500 kHz]
 // recommended pot span for a 1-turn pot: 50kHz, for a 10-turn pot: 100 to 200kHz
 // recommended pot span when radio is used mainly for CW: 10 to 25 kHz
+
+// prevent out-of-band transmission depending on ham band allocation (out-of-band RX is still possible if PTTsense mod is installed)
+// uncomment only ONE of the following 4 lines depending on your location:
+//#define REGION 1                // ham band allocation for ITU Region 1 (Europe, Africa, Middle-East, former Sovjet Union: TX restricted to 7000-7200 kHz)
+#define REGION 2                  // ham band allocation for ITU Region 2 (Americas: TX restricted to 7000-7300 kHz) 
+//#define REGION 3                // ham band allocation for ITU Region 3 (Asia except FSU, Oceania, Australia: TX restricted to 7000-7200 kHz)
+//#define REGION 0                // general coverage, TX unrestricted (not normally recommended)
 
 // USB/LSB parameters
 #define CAL_VALUE 1575            // Initial VFO calibration value: 180 ppm
@@ -258,6 +265,8 @@ bool ritOn = false;             // whether or not the RIT is on
 int RIToffset = 0;              // RIT offset (Hz)
 int RIT = 0;                    // actual RIT offset that is applied during RX when RIT is on
 int RIT_old;
+byte region = REGION;           // ham band allocation depending on ITU Region
+bool outofband;                 // whether or not the frequency is outside the 40m ham band allocation
 
 bool firstrun = true;
 char clicks;                    // counter for function button clicks
@@ -512,7 +521,7 @@ void updateDisplay() {
       break;
   }
 
-  if (inTx)                   // show the state (TX, SPLIT, or nothing)
+  if (inTx && !outofband)                   // show the state (TX, SPLIT, or nothing)
     strcat(c, " TX");
   else if (u.splitOn)
     strcat(c, " SP");
@@ -644,11 +653,25 @@ void calibrate() {
 */
 
 void setFrequency() {
+  outofband = false;
+  switch (region) {
+    case 1:
+    case 3:
+      if (frequency < 7000000UL || frequency > 7200000UL)
+        outofband = true;
+      break;
+    case 2:
+      if (frequency < 7000000UL || frequency > 7300000UL)
+        outofband = true;
+      break;
+  }
 
-  if (mode & 1)    // if we are in UPPER side band mode
-    si5351bx_setfreq(2, (bfo_freq + frequency - RXshift + RIT + fine - u.USB_OFFSET));
-  else             // if we are in LOWER side band mode
-    si5351bx_setfreq(2, (bfo_freq - frequency - RXshift - RIT - fine));
+  if (PTTsense_installed || !outofband) {
+    if (mode & 1)    // if we are in UPPER side band mode
+      si5351bx_setfreq(2, (bfo_freq + frequency - RXshift + RIT + fine - u.USB_OFFSET));
+    else             // if we are in LOWER side band mode
+      si5351bx_setfreq(2, (bfo_freq - frequency - RXshift - RIT - fine));
+  }
   updateDisplay();
 }
 
@@ -694,6 +717,7 @@ void checkTX() {
     if (!digitalRead(PTT_SENSE)) {
       //go in receive mode
       inTx = false;
+      setFrequency();
       updateDisplay();
       if (u.splitOn) {             // when SPLIT was on, swap the VFOs back to original state
         swapVFOs();
@@ -967,20 +991,22 @@ void keyer() {
     }
   }
 
-  if (keyeron) {
-    itoa(u.wpm, b, DEC);
-    strcpy(c, "CW-speed ");
-    strcat(c, b);
-    strcat(c, " WPM");
-    printLine(1, c);
-  }
-  else if (locked)
-    printLine(1, "dial is locked");
-  else if (clicks >= 10)
-    printLine(1, "--- SETTINGS ---");
-  else {
-    RIT_old = 0;
-    printLine(1, " ");
+  if (!outofband) {
+    if (keyeron) {
+      itoa(u.wpm, b, DEC);
+      strcpy(c, "CW-speed ");
+      strcat(c, b);
+      strcat(c, " WPM");
+      printLine(1, c);
+    }
+    else if (locked)
+      printLine(1, "dial is locked");
+    else if (clicks >= 10)
+      printLine(1, "--- SETTINGS ---");
+    else {
+      RIT_old = 0;
+      printLine(1, MY_CALLSIGN);
+    }
   }
 }
 
@@ -2282,12 +2308,11 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 28;
-  strcpy (c, "Raduino v1.27.7");
+  strcpy (c, "Raduino v1.28");
 
   lcd.begin(16, 2);
 
-  // Start serial and initialize the Si5351
-  //Serial.begin(9600);
+  //Serial.begin(9600);     //start the serial monitor port
   analogReference(DEFAULT);
   //Serial.println("*Raduino booting up");
 
@@ -2299,6 +2324,8 @@ void setup() {
   pinMode(SPOT, INPUT_PULLUP);
 
   pinMode(TX_RX, INPUT_PULLUP);
+  delay(100);               // allow the voltages on the Arduino inputs to settle for some milliseconds after power on
+  
   if (digitalRead(TX_RX)) { // Test if TX_RX line is installed
     TXRX_installed = false;
     u.semiQSK = false;
@@ -2340,7 +2367,7 @@ void setup() {
     // attach interrupt to the PTT_SENSE input
     // when PTT_SENSE goes from LOW to HIGH (so when PTT is keyed), execute the ISRptt routine
     attachPCINT(digitalPinToPCINT(PTT_SENSE), ISRptt, RISING);
-    
+
     calibrate_touch_pads();  // measure the base capacitance of the touch pads while they're not being touched
   }
 
@@ -2403,10 +2430,25 @@ void loop() {
             printLine(1, MY_CALLSIGN);
         }
         if (PTTsense_installed) {
+          if (inTx && outofband) {       // if PTTsense is installed:
+            si5351bx_setfreq(2, 0);      // disable CLK2 => no TX outside 40 ham band limits
+            if (clicks == 0)
+              printLine(1, "out of band!!");
+            bleep(1000, 60, 1);
+            bleep(500, 120, 1);
+            delay(300);
+          }
           checkCW();
           checkTX();
           if (keyeron)
             keyer();
+        }
+        else {
+          if (outofband) {               // if PTTsense is NOT installed:
+            si5351bx_setfreq(2, 0);      // disable CLK2 => no RX and no TX outside 40 ham band limits
+            if (clicks == 0)
+              printLine(1, "out of band!!");
+          }
         }
         if (ritOn && !inTx)
           doRIT();
