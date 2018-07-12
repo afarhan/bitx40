@@ -1,4 +1,4 @@
-## User instructions for Raduino_v1.27
+## User instructions for Raduino_v1.28
 
 **IMPORTANT**: This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
@@ -9,6 +9,15 @@ additional functionality provided by this software can be activated by installin
 See the table below showing which mods are required for each function. Details of each mod are described below.
 
 ![Table of hardware modifications](hardware%20modification%20overview.PNG)
+
+## Prevention of out-of-band transmissions
+
+The software restricts transmission to the 40m ham band allocation. By default this is ITU region 2 (Americas: 7000-7300 kHz). If you are located in a different ITU region, uncomment ONE of the lines 44-47 depending on your location, and recompile.
+
+If the PPTsense mod is installed, out-of-band TX will be disabled, but RX is still possible outside the band.
+If the PTTsense mod is NOT installed, both TX as well as RX will be disabled outside the band.
+
+To completely inhibit this feature, uncomment line 47 (define REGION 0) (not normally recommended!).
 
 ## 10-TURN TUNING POT
 
