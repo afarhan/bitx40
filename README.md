@@ -21,6 +21,10 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.28
+- prevention of out-of-band transmission depending on ITU region (tks Akira JJ1EPE)
+- allow the Arduino inputs to settle for 100 ms after power on (tks Ion VA3NOI)
+
 1.27.7
 - Slightly revised the code so that interrupts are only enabled when the PTTsense mod is installed
 
