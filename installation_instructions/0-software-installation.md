@@ -137,13 +137,13 @@ A new folder named "bitx40-master" will be created on the location you selected 
 
 ![download-sketch7](download_sketch7.png)
 
-The newly created folder "bitx40-master" contains several files. One of them is named "raduino_v1.27.7.ino". This is the actual Raduino firmware.
+The newly created folder "bitx40-master" contains several files. One of them is named "raduino_v1.xxx.ino". This is the actual Raduino firmware.
 
 ![download-sketch8](open_sketch1.png)
 
 ## Opening the sketch
 
-In the folder "bitx40-master", locate the file "raduino_v1.27.7.ino" and double-click it:
+In the folder "bitx40-master", locate the file "raduino_v1.xxx.ino" and double-click it:
 
 ![open-sketch1](open_sketch1.png)
 
