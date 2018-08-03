@@ -208,7 +208,7 @@ Press the Function Button again to unlock.
 
 In order to prevent that a spurious burst is emitted when switching from RX to TX, a short delay (TX_DELAY) is applied.
 This feature will only work when the [PTTsense-mod](#ptt-sense-wiring) is installed.
-By default the TX_DELAY is set to 65 ms. The delay time can be adjusted by editing line 71 as necessary.
+By default the TX_DELAY is set to 65 ms. The delay time can be adjusted by editing line 80 as necessary.
 
 ## FUNCTION BUTTON USAGE:
 
