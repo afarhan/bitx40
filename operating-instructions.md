@@ -234,7 +234,7 @@ To enter SETTINGS menu, press and hold the Function Button for a VERY long (>3 s
  
 #### Frequency Scan
 
-1 short press sets frequency SCAN parameters (lower limit, upper limit, step size, step delay)
+1 short press - set frequency SCAN parameters (lower limit, upper limit, step size, step delay)
 
  - using the tuning pot, set the desired lower frequency scan limit
  - press the FB
@@ -272,7 +272,7 @@ To enter SETTINGS menu, press and hold the Function Button for a VERY long (>3 s
     (or ask a friend to transmit a carrier at a known frequency)
   - before going into the calibration mode, first set the VFO to 7100.0 kHz in LSB mode
     (the received signal may not yet be zero beat at this point)
-  - go into the LSB calibration mode (3 short press)
+  - go into the LSB calibration mode (3 short presses)
   - using the tuning pot, adjust the correction value (ppm) for exactly zero beat
   - press the Function Button again to save the setting
 
@@ -325,9 +325,9 @@ To enter SETTINGS menu, press and hold the Function Button for a VERY long (>3 s
     (if the radio is mainly used for CW: a pot span of 10-25 kHz is recommended)
   - press the FB again to save the setting
 
-#### Exit Settings
+#### Exit Settings menu
  
-One long press (>1 second) will exit the SETTINGs menu and return to normal [operating mode](#operating-mode)
+One long press (>1 second) will exit the SETTINGS menu and return to normal [operating mode](#operating-mode)
 
 All user settings are stored in EEPROM and retrieved during startup.
 
@@ -335,7 +335,7 @@ All user settings are stored in EEPROM and retrieved during startup.
 
 To reset all used settings to "factory" values, press and hold the Function button during power on. The factory settings are:
 
-* VFO calibration value: 0
+* VFO calibration value: 180 ppm
 * VFO calibration offset (USB): 1500 Hz
 * VFO drive level (LSB): 4mA
 * VFO drive level (USB): 8mA
