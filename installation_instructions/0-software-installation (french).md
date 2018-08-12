@@ -3,7 +3,7 @@
 
 ## APERCU
 
-1. [Installation](#installer-l-ide-arduino) l'environnement de développement intégré sur votre PC (IDE)
+1. [Installation](#installer-ide-arduino) l'environnement de développement intégré sur votre PC (IDE)
 
 2. [Installation](#installer-la-bibliothèque-pinchangeinterrupt) installer la librairie PinChangeInterrupt sur votre PC
 
@@ -23,7 +23,7 @@
 
 10. Mise en marche de la radio
 
-## Installer l'IDE Arduino 
+## Installer IDE Arduino 
 
 L'IDE ARDUINO est le logiciel nécessaire à la compilation du programme raduino, il permet de telecharger celui-ci dans la puce microcontroleur arduino.
 Le programme Raduino(appele "SKETCH" ou croquis en francais) est ecrit en C (Langage de programmation). Les instructions du programme doivent être translatées en code machine  de façon a ce que le microcontrôleur arduino puisse éxécuter les instructions : c'est la compilation.
