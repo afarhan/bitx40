@@ -5,7 +5,7 @@
 
 1. [Installation](#installer-l-ide-arduino) l'environnement de développement intégré sur votre PC (IDE)
 
-2. [Installation](#installer-la-bibliothèque) installer la librairie PinChangeInterrupt sur votre PC
+2. [Installation](#installer-la-bibliotheque) installer la librairie PinChangeInterrupt sur votre PC
 
 3. [Téléchargement](#télécharger-le-croquis) télécharger le croquis (sketch) Raduino sur votre PC
 
