@@ -5,7 +5,7 @@
 
 1. [Installation](#installer-l-ide-arduino) l'environnement de développement intégré sur votre PC (IDE)
 
-2. [Installation](#installer-la-bibliotheque) installer la librairie PinChangeInterrupt sur votre PC
+2. [Installation](#installer-la-bibliothèque-pinchangeinterrupt) installer la librairie PinChangeInterrupt sur votre PC
 
 3. [Téléchargement](#télécharger-le-croquis) télécharger le croquis (sketch) Raduino sur votre PC
 
@@ -85,7 +85,7 @@ puis ensuite aller dans "Outil" => "Programateur:" => sélectionner AVRISP mkII:
 
 ![IDEinstall11](IDEinstall11.png)
 
-## Installer la bibliothèque (library) PinChangeInterrupt
+## Installer la bibliothèque PinChangeInterrupt
 
 Cette version de croquis (sketch) requiert la bibliothèque ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) pour la gestion des interruptions.
 C'est une librairie non-standard, c'est a dire qu'elle n'est pas installée par défaut. Executer les différentes étapes suivantes pour l'installer sur votre PC
