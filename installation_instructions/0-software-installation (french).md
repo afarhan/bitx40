@@ -1,5 +1,6 @@
 
-# INSTRUCTIONS D'INSTALLATION (pour Windows 10)- FRENCH
+# INSTRUCTIONS D'INSTALLATION (pour Windows 10)
+(FRENCH translation by Jacques F1APY)
 
 ## APERCU
 
