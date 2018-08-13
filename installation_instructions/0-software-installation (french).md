@@ -17,7 +17,7 @@
 
 7. Connecter le cable USB
 
-8. [Télécharger](#telecharger-le-sketch) charger le firmware dans la carte raduino
+8. [Télécharger](#télécharger-le-sketch) charger le firmware dans la carte raduino
 
 9. Déconnecter le cable USB 
 
