@@ -14,8 +14,8 @@ Voir le tableau ci-dessous indiquant quelles modifications sont requises pour ch
 
 Le logiciel restreint la transmission à la bande radio-amateur 40m allouée. Pas défaut c'est celle de l'UIT région 2 (Ameriques : 7000-7300 kHz). Si vous êtes localisés dans une UIT différente, dé-commenter UNE des lignes 44-47 en fonction de votre emplacement, et recompiler.
 
-Si la [PTTsense-mod](cablage-de-PTT-SENSE) est installée, l'émission (TX) hors bande sera désactivée, mais la réception (RX) est encore possible en dehors de la bande.
-Si la [PTTsense-mod](cablage-de-PTT-SENSE) n'est PAS installée, l'émission(TX) et la réception(RX) seront toutes les deux désactivés en dehors de la bande.
+Si la [PTTsense-mod](#cablage-de-ptt-sense-) est installée, l'émission (TX) hors bande sera désactivée, mais la réception (RX) est encore possible en dehors de la bande.
+Si la [PTTsense-mod](#cablage-de-ptt-sense-) n'est PAS installée, l'émission(TX) et la réception(RX) seront toutes les deux désactivés en dehors de la bande.
 
 Pour inhiber cette fonctionnalité, dé-commenter la ligne 47 (define REGION 0) (normallement pas recommandé!).
 
