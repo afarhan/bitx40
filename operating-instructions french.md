@@ -26,7 +26,7 @@ Si vous installez un potentiomètre de 10 tours, vous pouvez étendre la portée
 
 ![Image du potentiomètre 10-tours connecté](Vishay%20100K%2C%2010-turn%20pot%20wire%20up.jpg)
 
-Utilisation du Bouton de Fonction, aller au menu SETTINGS [set the desired pot span](#gamme-daccord).
+Utilisation du Bouton de Fonction, aller au menu SETTINGS [réglage de la plage de réglage](#gamme-daccord).
 
 ## CABLAGE DU BOUTON DE FONCTION :
 
