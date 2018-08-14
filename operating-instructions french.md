@@ -1,6 +1,6 @@
 ## Instructions utilisateur pour le Raduino_v1.28
 
-**IMPORTANT**: Cette version du croquis nécessite la librairie ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) pour le support d'interruption. Utiliser votre IDE pour [l'installer](installation_instructions/0-instructions-d'installation-french.md#installer-la-biblioth%C3%A8que-pinchangeinterrupt) avant de compiler ce croquis!
+**IMPORTANT**: Cette version du croquis nécessite la librairie ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) pour le support d'interruption. Utiliser votre IDE pour [l'installer](/installation_instructions/0-instructions-d'installation-french.md#installer-la-biblioth%C3%A8que-pinchangeinterrupt) avant de compiler ce croquis!
 
 Après une mise à jour, toutes les données d'étalonnage, les paramètres de niveau de lecteur, etc. seront réinitialisés aux valeurs d'usine.
 Avant de mettre à jour, inscrivez vos valeurs d'étalonnage, etc. Après la mise à jour, utilisez le bouton de fonction pour les rétablir.
