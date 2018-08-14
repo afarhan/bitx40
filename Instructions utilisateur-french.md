@@ -1,4 +1,5 @@
 ## Instructions utilisateur pour le Raduino_v1.28
+(French translation by Gilles F1BFU)
 
 **IMPORTANT**: Cette version du croquis nécessite la librairie ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) pour le support d'interruption. Utiliser votre IDE pour [l'installer](installer-la-bibliothèque-PinChangeInterrupt-french.md) avant de compiler ce croquis!
 
