@@ -6,20 +6,20 @@ Vous devez faire seulement ceci:
 
 1. Aller dans 'Croquis' => 'Inclure une Bibliothèque' => 'Gérer les Bibliothèques...':
 
-![libray-install1](library-install1.PNG)
+![libray-install1](installation_instructions/library-install1.PNG)
 
 2. Le gestionnaire de bibliothèques devrait démarrer. Attendez jusqu'à ce que la liste complete des bibliothèque soit affichée:
 
-![libray-install2](library-install2.PNG)
+![libray-install2](installation_instructions/library-install2.PNG)
 
 3. Dans la fenêtre de recherche entrer "pinchangeinterrupt":
 
-![libray-install3](library-install3.PNG)
+![libray-install3](installation_instructions/library-install3.PNG)
 
 4. Sélectioner la bibliothèque nommée "PinChangeInterrupt by NicoHood", puis presser "installer":
 
-![libray-install4](library-install4.PNG)
+![libray-install4](installation_instructions/library-install4.PNG)
 
 5. Attendez que l'installation soit terminée et presser "fermer"
 
-![libray-install5](library-install5.PNG)
+![libray-install5](installation_instructions/library-install5.PNG)
