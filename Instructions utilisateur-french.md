@@ -186,7 +186,7 @@ Appuyez à nouveau sur le bouton de fonction pour déverrouiller.
 ## PREVENTION DE RAFALE DE PARASITES
 
 Afin d'éviter qu'une rafale parasite soit émise lors du passage de réception(RX) à émission(TX), un court délai (TX_DELAY) est appliqué.
-Cette fonctionnalité ne fonctionnera que lorsque le [PTTsense-mod] (# ptt-sense-wiring) est installé.
+Cette fonctionnalité ne fonctionnera que lorsque le [PTTsense-mod](#cablage-de-ptt-sense-) est installé.
 Par défaut, le TX_DELAY est défini sur 65 ms. Le temps de retard peut être ajusté en éditant la ligne 80 si nécessaire.
 
 ## UTILISATION DU BOUTON DE FONCTION :
