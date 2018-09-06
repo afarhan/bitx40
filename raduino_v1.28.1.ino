@@ -1,5 +1,5 @@
 /**
-   Raduino_v1.28 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
+   Raduino_v1.28.1 for BITX40 - Allard Munters PE1NWL (pe1nwl@gooddx.net)
 
    This source file is under General Public License version 3.
 
@@ -2308,7 +2308,7 @@ void calibrate_touch_pads() {
 
 void setup() {
   u.raduino_version = 28;
-  strcpy (c, "Raduino v1.28");
+  strcpy (c, "Raduino v1.28.1");
 
   lcd.begin(16, 2);
 
@@ -2322,10 +2322,13 @@ void setup() {
   pinMode(CAL_BUTTON, INPUT_PULLUP);
   //configure the SPOT button to use the internal pull-up
   pinMode(SPOT, INPUT_PULLUP);
-
+  //configure the PTT SENSE to use the internal pull-up
+  pinMode(PTT_SENSE, INPUT_PULLUP);
+  //configure the TX_RX to use the internal pull-up
   pinMode(TX_RX, INPUT_PULLUP);
+
   delay(100);               // allow the voltages on the Arduino inputs to settle for some milliseconds after power on
-  
+
   if (digitalRead(TX_RX)) { // Test if TX_RX line is installed
     TXRX_installed = false;
     u.semiQSK = false;
@@ -2349,9 +2352,8 @@ void setup() {
   if (!digitalRead(CAL_BUTTON) || !digitalRead(FBUTTON) || (old_version != u.raduino_version)) {
     factory_settings();
   }
+  delay(100);
 
-  //configure the PTT SENSE to use the internal pull-up
-  pinMode(PTT_SENSE, INPUT_PULLUP);
   // check if PTT sense line is installed
   PTTsense_installed = !digitalRead(PTT_SENSE);
 
