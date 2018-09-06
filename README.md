@@ -21,6 +21,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
 
 ## Revision record
 
+1.28.1
+- Fixed a bug that the PTTsense mod was not reliably detected on some radios. As a result, CW operation was disabled even when the mod was installed (tks Gary K4VIG and Joe IZ0WIT)
+
 1.28
 - prevention of out-of-band transmission depending on ITU region (tks Akira JJ1EPE)
 - allow the Arduino inputs to settle for 100 ms after power on (tks Ion VA3NOI)
