@@ -63,7 +63,7 @@ The first 11 pins have no headers (pads only):
 * D5: CW Side Tone
 * D4: CW SPOT Button
 * D3: Key, "dah"
-* ??: Unused
+* D2: PULSE for capacitive touch keyer
 * ??: Unused
 * ??: Unused
 * ??: Unused
