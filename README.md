@@ -13,6 +13,8 @@ See the [operating and modification instructions](operating-instructions.md) and
 
 **Note 2:** Since v1.27 the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) is required for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
+**Note 3:** Instead of compiling and uploading using the IDE, you can also simply install the [precompiled binary (hex) file](raduino_v1.28.1.ino.with_bootloader.eightanaloginputs.hex) using [xLoader](http://xloader.russemotto.com/).
+
 ## Donate
 
 I develop and maintain ham radio software as a hobby and distribute it for free. However, if you like this software, please consider to donate a small amount to my son's home who stays in an institute for kids with an intellectual disability and autism. The money will be used for adapted toys, a tricycle, a trampoline or a swing. Your support will be highly appreciated by this group of 6 young adolescents!
