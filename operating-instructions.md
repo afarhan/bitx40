@@ -117,7 +117,8 @@ The speed can be controlled from the front panel (range 1-50 WPM). While keying,
 
 The sketch supports Capacitive Touch functionality. With this feature it is possible to use touch sensors instead of a
 mechanical morse key or paddle. Manual straight key as well as automatic keyer operation is possible via the touch sensors.
-See the following demo: https://www.youtube.com/watch?v=9MWM6UVy9k4
+See the following demo video:
+[![](http://img.youtube.com/vi/9MWM6UVy9k4/0.jpg)](http://www.youtube.com/watch?v=9MWM6UVy9k4 "touch keyer demo")
 
 A minimal modification (add four resistors) is required for this function.
 Note: some builders reported that the touch sensor wasn't reliably detected during power on, in that case add some small (3-22pF) capacitors to both inputs in order to slightly increase the internal 'base' capacitance.
