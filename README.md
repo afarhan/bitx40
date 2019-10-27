@@ -13,7 +13,7 @@ See the [operating and modification instructions](operating-instructions.md) and
 
 **Note 2:** Since v1.27 the library [PinChangeInterrupt](https://playground.arduino.cc/Main/PinChangeInterrupt) is required for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
-**Note 3:** Instead of compiling and uploading using the IDE, you can also simply install the [precompiled binary (hex) file](raduino_v1.28.1.ino.with_bootloader.eightanaloginputs.hex) using [xLoader](http://xloader.russemotto.com/).
+**Note 3:** Instead of compiling and uploading using the IDE, you can also simply install the [precompiled binary (hex) file](raduino_v1.29.ino.with_bootloader.eightanaloginputs.hex) using [xLoader](http://xloader.russemotto.com/).
 
 ## Donate
 
@@ -22,6 +22,9 @@ I develop and maintain ham radio software as a hobby and distribute it for free.
  [![Donate](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PTAMBM6QT8LP8)
 
 ## Revision record
+
+1.29
+- Added Roger Beep function (NASA style "Quindar Tone" as used in Apollo missions)
 
 1.28.1
 - Fixed a bug that the PTTsense mod was not reliably detected on some radios. As a result, CW operation was disabled even when the mod was installed (tks Gary K4VIG and Joe IZ0WIT)
