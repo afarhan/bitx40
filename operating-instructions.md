@@ -1,4 +1,4 @@
-## User instructions for Raduino_v1.28
+## User instructions for Raduino_v1.29
 
 **IMPORTANT**: This sketch version requires the library ["PinChangeInterrupt"](https://playground.arduino.cc/Main/PinChangeInterrupt) for interrupt handling. Use your IDE to [install](library-install.md) it before compiling this sketch!
 
@@ -226,6 +226,7 @@ In normal operation mode:
 * 4 short presses - switch mode (rotate through LSB-USB-CWL-CWU)
 * 5 short presses - start frequency SCAN mode
 * 6 short presses - start VFO A/B monitoring mode
+* 7 short presses - toggle Roger Beep on/off (PTT sense is required for this function)
 * long press (> 1 second) - VFO A=B
 
 
