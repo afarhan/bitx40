@@ -1132,6 +1132,8 @@ void checkButton() {
           if (clicks == 12) // No CW parameters when PTTsense is not installed
             clicks++;
         }
+        if ((!PTTsense_installed || !TXRX_installed) && clicks == 7) // No Roger Beep when either PTTsense or TXRX mod is not installed
+          clicks = 1;
         switch (clicks) {
           //Normal menu options
           case 1:
