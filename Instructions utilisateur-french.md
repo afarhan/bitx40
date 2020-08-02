@@ -158,7 +158,7 @@ La tonalité latérale(Side Tone) CW est uniquement utilisée pour le fonctionne
 
 Ceci est nécessaire pour le fonctionnement en CW.
 
-Lorsque la clé est enfoncée, la sortie D7 (connecteur P3, broche 15) sera HIGH. Il ne repassera à LOW que lorsque la clé est allumée depuis au moins 350 ms (cette valeur de temporisation peut être modifiée via le menu SETTINGS).
+Lorsque la clé est enfoncée, la sortie D7 (connecteur P3, broche 16) sera HIGH. Il ne repassera à LOW que lorsque la clé est allumée depuis au moins 350 ms (cette valeur de temporisation peut être modifiée via le menu SETTINGS).
 Ce signal est utilisé pour piloter un transistor NPN qui est connecté en parallèle au commutateur PTT existant, afin de contourner le commutateur PTT pendant le fonctionnement CW. Par conséquent, les relais seront activés tant que D7 est HIGH.
 (Suggestion : si vous avez un connecteur combiné microphone/PTT, le transistor de dérivation PTT peut être soudé directement à l’arrière).
 (Le transistor de dérivation PTT peut également être utilisé dans le futur pour la fonctionnalité VOX).
