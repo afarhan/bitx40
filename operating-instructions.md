@@ -175,7 +175,7 @@ will still work normally.
 
 This is required for CW operation.
 
-When the key is down output D7 (connector P3, pin 15) will be HIGH. It will only go LOW again when the key has been up for at
+When the key is down output D7 (connector P3, pin 16) will be HIGH. It will only go LOW again when the key has been up for at
 least 350 ms (this timeout value can be changed via the SETTINGS menu).
 This signal is used to drive an NPN transistor which is connected in parallel to the existing PTT switch, so that it will
 bypass the PTT switch during CW operation. As as result the relays will be activated as long as D7 is HIGH.
